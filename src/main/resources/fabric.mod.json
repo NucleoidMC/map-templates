@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "map_templates",
+  "version": "${version}",
+  "name": "Map Templates",
+  "description": "Library to work with map templates that can be saved and loaded into a world",
+  "authors": ["Nucleoid Contributors"],
+  "license": "LGPLv3",
+  "environment": "*",
+  "entrypoints": {
+    "main": []
+  },
+  "depends": {
+    "fabricloader": ">=0.9.1",
+    "minecraft": "1.17.x",
+    "java": ">=16"
+  }
+}
