@@ -17,7 +17,6 @@ import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.registry.RegistryKey;
-import net.minecraft.world.HeightLimitView;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
@@ -173,17 +172,12 @@ public final class MapTemplate {
     }
 
     // TODO: store / lookup more efficiently?
-    public int getTopY(int x, int z, Heightmap.Type heightmap, HeightLimitView heightLimit) {
+    public int getTopY(int x, int z, Heightmap.Type heightmap) {
         var predicate = heightmap.getBlockPredicate();
 
-        int maxY = heightLimit.getTopY();
-        int minY = heightLimit.getBottomY();
-
-        var bounds = this.getBoundsOrNull();
-        if (bounds != null) {
-            maxY = bounds.max().getY();
-            minY = bounds.min().getY();
-        }
+        var bounds = this.getBounds();
+        int minY = bounds.min().getY();
+        int maxY = bounds.max().getY();
 
         var mutablePos = new BlockPos.Mutable(x, 0, z);
         for (int y = maxY; y >= minY; y--) {
@@ -198,8 +192,8 @@ public final class MapTemplate {
         return 0;
     }
 
-    public BlockPos getTopPos(int x, int z, Heightmap.Type heightmap, HeightLimitView heightLimit) {
-        int y = this.getTopY(x, z, heightmap, heightLimit);
+    public BlockPos getTopPos(int x, int z, Heightmap.Type heightmap) {
+        int y = this.getTopY(x, z, heightmap);
         return new BlockPos(x, y, z);
     }
 
