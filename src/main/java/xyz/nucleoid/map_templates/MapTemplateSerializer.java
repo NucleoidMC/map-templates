@@ -2,6 +2,7 @@ package xyz.nucleoid.map_templates;
 
 import com.google.common.base.Strings;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
+import net.minecraft.SharedConstants;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
@@ -93,6 +94,9 @@ public final class MapTemplateSerializer {
 
     private static NbtCompound save(MapTemplate template) {
         var root = new NbtCompound();
+
+        int worldVersion = SharedConstants.getGameVersion().getWorldVersion();
+        root.putInt("data_version", worldVersion);
 
         var chunkList = new NbtList();
 
