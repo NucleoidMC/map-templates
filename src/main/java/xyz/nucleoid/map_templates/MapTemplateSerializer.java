@@ -1,12 +1,17 @@
 package xyz.nucleoid.map_templates;
 
 import com.google.common.base.Strings;
+import com.mojang.datafixers.DataFixer;
+import com.mojang.serialization.Dynamic;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import net.minecraft.SharedConstants;
+import net.minecraft.datafixer.Schemas;
+import net.minecraft.datafixer.TypeReferences;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.resource.Resource;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
@@ -47,7 +52,23 @@ public final class MapTemplateSerializer {
         NbtIo.writeCompressed(root, output);
     }
 
+    private static int getDataVersion(NbtCompound root) {
+        if (root.contains("data_version", NbtElement.NUMBER_TYPE)) {
+            return root.getInt("data_version");
+        }
+
+        // Data version for 1.16.5
+        return 2586;
+    }
+
     private static void load(MapTemplate template, NbtCompound root) {
+        load(template, root, Schemas.getFixer());
+    }
+
+    private static void load(MapTemplate template, NbtCompound root, DataFixer fixer) {
+        int oldVersion = getDataVersion(root);
+        int targetVersion = SharedConstants.getGameVersion().getWorldVersion();
+
         var chunkList = root.getList("chunks", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < chunkList.size(); i++) {
             var chunkRoot = chunkList.getCompound(i);
@@ -75,6 +96,13 @@ public final class MapTemplateSerializer {
         var blockEntityList = root.getList("block_entities", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < blockEntityList.size(); i++) {
             var blockEntity = blockEntityList.getCompound(i);
+
+            if (targetVersion > oldVersion) {
+                // Apply data fixer to block entity
+                Dynamic<NbtElement> dynamic = new Dynamic<>(NbtOps.INSTANCE, blockEntity);
+                blockEntity = (NbtCompound) fixer.update(TypeReferences.BLOCK_ENTITY, dynamic, oldVersion, targetVersion).getValue();
+            }
+
             var pos = new BlockPos(
                     blockEntity.getInt("x"),
                     blockEntity.getInt("y"),
