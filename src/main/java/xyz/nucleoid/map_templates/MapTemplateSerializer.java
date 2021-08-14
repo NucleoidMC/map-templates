@@ -73,6 +73,17 @@ public final class MapTemplateSerializer {
         for (int i = 0; i < chunkList.size(); i++) {
             var chunkRoot = chunkList.getCompound(i);
 
+            if (targetVersion > oldVersion) {
+                // Apply data fixer to chunk palette
+                var palette = chunkRoot.getList("palette", NbtElement.COMPOUND_TYPE);
+                for (int j = 0; j < palette.size(); j++) {
+                    var paletteEntry = palette.getCompound(j);
+
+                    Dynamic<NbtElement> dynamic = new Dynamic<>(NbtOps.INSTANCE, paletteEntry);
+                    palette.set(j, fixer.update(TypeReferences.BLOCK_STATE, dynamic, oldVersion, targetVersion).getValue());
+                }
+            }
+
             var posArray = chunkRoot.getIntArray("pos");
             if (posArray.length != 3) {
                 LOGGER.warn("Invalid chunk pos key: {}", posArray);
