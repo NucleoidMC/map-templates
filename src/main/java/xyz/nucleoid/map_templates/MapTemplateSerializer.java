@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import com.mojang.datafixers.DataFixer;
 import com.mojang.serialization.Dynamic;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
 import net.minecraft.datafixer.Schemas;
 import net.minecraft.datafixer.TypeReferences;
@@ -28,6 +29,7 @@ import java.io.OutputStream;
 
 public final class MapTemplateSerializer {
     private static final Logger LOGGER = LogManager.getLogger(MapTemplateSerializer.class);
+    private static final boolean SKIP_FIXERS = FabricLoader.getInstance().isModLoaded("databreaker");
 
     private MapTemplateSerializer() {
     }
@@ -72,8 +74,7 @@ public final class MapTemplateSerializer {
         var chunkList = root.getList("chunks", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < chunkList.size(); i++) {
             var chunkRoot = chunkList.getCompound(i);
-
-            if (targetVersion > oldVersion) {
+            if (targetVersion > oldVersion && !SKIP_FIXERS) {
                 // Apply data fixer to chunk palette
                 var palette = chunkRoot.getList("palette", NbtElement.COMPOUND_TYPE);
                 for (int j = 0; j < palette.size(); j++) {
@@ -108,7 +109,7 @@ public final class MapTemplateSerializer {
         for (int i = 0; i < blockEntityList.size(); i++) {
             var blockEntity = blockEntityList.getCompound(i);
 
-            if (targetVersion > oldVersion) {
+            if (targetVersion > oldVersion && !SKIP_FIXERS) {
                 // Apply data fixer to block entity
                 Dynamic<NbtElement> dynamic = new Dynamic<>(NbtOps.INSTANCE, blockEntity);
                 blockEntity = (NbtCompound) fixer.update(TypeReferences.BLOCK_ENTITY, dynamic, oldVersion, targetVersion).getValue();
