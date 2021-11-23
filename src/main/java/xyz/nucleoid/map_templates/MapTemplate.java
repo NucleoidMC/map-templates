@@ -98,7 +98,7 @@ public final class MapTemplate {
 
     public void setBlockEntity(BlockPos pos, @Nullable BlockEntity entity) {
         if (entity != null) {
-            this.setBlockEntityTag(pos, entity.writeNbt(new NbtCompound()));
+            this.setBlockEntityTag(pos, entity.createNbtWithId());
         } else {
             this.setBlockEntityTag(pos, null);
         }

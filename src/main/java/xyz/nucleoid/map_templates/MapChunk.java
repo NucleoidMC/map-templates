@@ -1,32 +1,24 @@
 package xyz.nucleoid.map_templates;
 
+import com.mojang.serialization.Codec;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtHelper;
-import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.*;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.chunk.IdListPalette;
-import net.minecraft.world.chunk.Palette;
 import net.minecraft.world.chunk.PalettedContainer;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class MapChunk {
-    private static final Palette<BlockState> PALETTE = new IdListPalette<>(Block.STATE_IDS, Blocks.AIR.getDefaultState());
+    private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer.createCodec(Block.STATE_IDS, BlockState.CODEC, PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
 
     private final ChunkSectionPos pos;
 
-    private final PalettedContainer<BlockState> container = new PalettedContainer<>(
-            PALETTE, Block.STATE_IDS,
-            NbtHelper::toBlockState, NbtHelper::fromBlockState,
-            Blocks.AIR.getDefaultState()
-    );
+    private PalettedContainer<BlockState> container = new PalettedContainer<>(Block.STATE_IDS, Blocks.AIR.getDefaultState(), PalettedContainer.PaletteProvider.BLOCK_STATE);
     private final List<MapEntity> entities = new ArrayList<>();
 
     MapChunk(ChunkSectionPos pos) {
@@ -74,7 +66,7 @@ public final class MapChunk {
     }
 
     public void serialize(NbtCompound tag) {
-        this.container.write(tag, "palette", "block_states");
+        tag.put("block_states", BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow(false, (e) -> {}));
 
         if (!this.entities.isEmpty()) {
             var entitiesTag = new NbtList();
@@ -87,7 +79,12 @@ public final class MapChunk {
 
     public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound tag) {
         var chunk = new MapChunk(pos);
-        chunk.container.read(tag.getList("palette", NbtElement.COMPOUND_TYPE), tag.getLongArray("block_states"));
+        var container = BLOCK_CODEC.parse(NbtOps.INSTANCE, tag.getCompound("block_states"))
+                .promotePartial(errorMessage -> {}).get().left();
+
+        if (container.isPresent()) {
+            chunk.container = container.get();
+        }
 
         if (tag.contains("entities", NbtElement.LIST_TYPE)) {
             var entitiesTag = tag.getList("entities", NbtElement.COMPOUND_TYPE);

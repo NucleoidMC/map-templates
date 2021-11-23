@@ -76,7 +76,19 @@ public final class MapTemplateSerializer {
             var chunkRoot = chunkList.getCompound(i);
             if (targetVersion > oldVersion && !SKIP_FIXERS) {
                 // Apply data fixer to chunk palette
-                var palette = chunkRoot.getList("palette", NbtElement.COMPOUND_TYPE);
+
+                if (oldVersion <= 2730) {
+                    var palette = chunkRoot.getList("palette", NbtElement.COMPOUND_TYPE);
+                    var blockData = chunkRoot.getLongArray("block_states");
+                    chunkRoot.remove("palette");
+
+                    var blockStates = new NbtCompound();
+                    blockStates.putLongArray("data", blockData);
+                    blockStates.put("palette", palette);
+                    chunkRoot.put("block_states", blockStates);
+                }
+                var palette = chunkRoot.getCompound("block_states").getList("palette", NbtElement.COMPOUND_TYPE);
+
                 for (int j = 0; j < palette.size(); j++) {
                     var paletteEntry = palette.getCompound(j);
 
