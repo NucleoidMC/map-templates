@@ -87,30 +87,30 @@ public final class MapTemplate {
         this.generatedBounds = null;
 
         if (state.hasBlockEntity()) {
-            var tag = new NbtCompound();
-            tag.putString("id", "DUMMY");
-            tag.putInt("x", pos.getX());
-            tag.putInt("y", pos.getY());
-            tag.putInt("z", pos.getZ());
-            this.blockEntities.put(pos.asLong(), tag);
+            var nbt = new NbtCompound();
+            nbt.putString("id", "DUMMY");
+            nbt.putInt("x", pos.getX());
+            nbt.putInt("y", pos.getY());
+            nbt.putInt("z", pos.getZ());
+            this.blockEntities.put(pos.asLong(), nbt);
         }
     }
 
     public void setBlockEntity(BlockPos pos, @Nullable BlockEntity entity) {
         if (entity != null) {
-            this.setBlockEntityTag(pos, entity.createNbtWithId());
+            this.setBlockEntityNbt(pos, entity.createNbtWithId());
         } else {
-            this.setBlockEntityTag(pos, null);
+            this.setBlockEntityNbt(pos, null);
         }
     }
 
-    public void setBlockEntityTag(BlockPos pos, @Nullable NbtCompound entityTag) {
-        if (entityTag != null) {
-            entityTag.putInt("x", pos.getX());
-            entityTag.putInt("y", pos.getY());
-            entityTag.putInt("z", pos.getZ());
+    public void setBlockEntityNbt(BlockPos pos, @Nullable NbtCompound entityNbt) {
+        if (entityNbt != null) {
+            entityNbt.putInt("x", pos.getX());
+            entityNbt.putInt("y", pos.getY());
+            entityNbt.putInt("z", pos.getZ());
 
-            this.blockEntities.put(pos.asLong(), entityTag);
+            this.blockEntities.put(pos.asLong(), entityNbt);
         } else {
             this.blockEntities.remove(pos.asLong());
         }
@@ -125,19 +125,19 @@ public final class MapTemplate {
     }
 
     @Nullable
-    public NbtCompound getBlockEntityTag(BlockPos localPos) {
-        var tag = this.blockEntities.get(localPos.asLong());
-        return tag != null ? tag.copy() : null;
+    public NbtCompound getBlockEntityNbt(BlockPos localPos) {
+        var nbt = this.blockEntities.get(localPos.asLong());
+        return nbt != null ? nbt.copy() : null;
     }
 
     @Nullable
-    public NbtCompound getBlockEntityTag(BlockPos localPos, BlockPos worldPos) {
-        var tag = this.getBlockEntityTag(localPos);
-        if (tag != null) {
-            tag.putInt("x", worldPos.getX());
-            tag.putInt("y", worldPos.getY());
-            tag.putInt("z", worldPos.getZ());
-            return tag;
+    public NbtCompound getBlockEntityNbt(BlockPos localPos, BlockPos worldPos) {
+        var nbt = this.getBlockEntityNbt(localPos);
+        if (nbt != null) {
+            nbt.putInt("x", worldPos.getX());
+            nbt.putInt("y", worldPos.getY());
+            nbt.putInt("z", worldPos.getZ());
+            return nbt;
         }
         return null;
     }
@@ -155,7 +155,7 @@ public final class MapTemplate {
     }
 
     public void addEntity(MapEntity entity) {
-        this.getOrCreateChunk(chunkPos(entity.getPosition())).addEntity(entity);
+        this.getOrCreateChunk(chunkPos(entity.position())).addEntity(entity);
     }
 
     /**
@@ -332,8 +332,8 @@ public final class MapTemplate {
             mutablePos.set(blockEntity.getLongKey());
             transform.transformPoint(mutablePos);
 
-            var tag = blockEntity.getValue().copy();
-            result.setBlockEntityTag(mutablePos, tag);
+            var nbt = blockEntity.getValue().copy();
+            result.setBlockEntityNbt(mutablePos, nbt);
         }
 
         result.biome = this.biome;

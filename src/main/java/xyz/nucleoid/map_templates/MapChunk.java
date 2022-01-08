@@ -65,31 +65,31 @@ public final class MapChunk {
         return this.entities;
     }
 
-    public void serialize(NbtCompound tag) {
-        tag.put("block_states", BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow(false, (e) -> {}));
+    public void serialize(NbtCompound nbt) {
+        nbt.put("block_states", BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow(false, (e) -> {}));
 
         if (!this.entities.isEmpty()) {
-            var entitiesTag = new NbtList();
+            var entitiesNbt = new NbtList();
             for (var entity : this.entities) {
-                entitiesTag.add(entity.tag);
+                entitiesNbt.add(entity.nbt());
             }
-            tag.put("entities", entitiesTag);
+            nbt.put("entities", entitiesNbt);
         }
     }
 
-    public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound tag) {
+    public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound nbt) {
         var chunk = new MapChunk(pos);
-        var container = BLOCK_CODEC.parse(NbtOps.INSTANCE, tag.getCompound("block_states"))
+        var container = BLOCK_CODEC.parse(NbtOps.INSTANCE, nbt.getCompound("block_states"))
                 .promotePartial(errorMessage -> {}).get().left();
 
         if (container.isPresent()) {
             chunk.container = container.get();
         }
 
-        if (tag.contains("entities", NbtElement.LIST_TYPE)) {
-            var entitiesTag = tag.getList("entities", NbtElement.COMPOUND_TYPE);
-            for (var entityTag : entitiesTag) {
-                chunk.entities.add(MapEntity.fromTag(pos, (NbtCompound) entityTag));
+        if (nbt.contains("entities", NbtElement.LIST_TYPE)) {
+            var entitiesNbt = nbt.getList("entities", NbtElement.COMPOUND_TYPE);
+            for (var entityNbt : entitiesNbt) {
+                chunk.entities.add(MapEntity.fromNbt(pos, (NbtCompound) entityNbt));
             }
         }
 
