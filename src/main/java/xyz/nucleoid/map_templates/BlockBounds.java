@@ -24,8 +24,7 @@ import java.util.Random;
  * <p>
  * This is made up of an inclusive minimum and maximum {@link BlockPos}.
  */
-public record BlockBounds(BlockPos min,
-                          BlockPos max) implements Iterable<BlockPos> {
+public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockPos> {
     public static final Codec<BlockBounds> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(
                     BlockPos.CODEC.fieldOf("min").forGetter(BlockBounds::min),
