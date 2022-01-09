@@ -33,6 +33,14 @@ public record MapEntity(Vec3d position, NbtCompound nbt) {
         return nbt;
     }
 
+    /**
+     * @deprecated use {@link #createEntityNbt(BlockPos)}
+     */
+    @Deprecated(forRemoval = true)
+    public NbtCompound createEntityTag(BlockPos origin) {
+        return createEntityNbt(origin);
+    }
+
     public void createEntities(World world, BlockPos origin, Consumer<Entity> consumer) {
         var nbt = this.createEntityNbt(origin);
         EntityType.loadEntityWithPassengers(nbt, world, entity -> {
@@ -73,6 +81,14 @@ public record MapEntity(Vec3d position, NbtCompound nbt) {
         Vec3d globalPos = localPos.add(sectionPos.getMinX(), sectionPos.getMinY(), sectionPos.getMinZ());
 
         return new MapEntity(globalPos, nbt);
+    }
+
+    /**
+     * @deprecated use {@link #fromNbt(ChunkSectionPos, NbtCompound)}
+     */
+    @Deprecated(forRemoval = true)
+    public static MapEntity fromTag(ChunkSectionPos sectionPos, NbtCompound nbt) {
+        return fromNbt(sectionPos, nbt);
     }
 
     MapEntity transformed(MapTransform transform) {
