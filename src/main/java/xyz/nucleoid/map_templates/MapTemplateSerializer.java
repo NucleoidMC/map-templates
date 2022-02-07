@@ -74,7 +74,8 @@ public final class MapTemplateSerializer {
         var chunkList = root.getList("chunks", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < chunkList.size(); i++) {
             var chunkRoot = chunkList.getCompound(i);
-            if (targetVersion > oldVersion && !SKIP_FIXERS) {
+
+            if (targetVersion > oldVersion) {
                 // Apply data fixer to chunk palette
 
                 if (oldVersion <= 2730) {
@@ -87,13 +88,18 @@ public final class MapTemplateSerializer {
                     blockStates.put("palette", palette);
                     chunkRoot.put("block_states", blockStates);
                 }
-                var palette = chunkRoot.getCompound("block_states").getList("palette", NbtElement.COMPOUND_TYPE);
 
-                for (int j = 0; j < palette.size(); j++) {
-                    var paletteEntry = palette.getCompound(j);
+                if (!SKIP_FIXERS) {
+                    var palette = chunkRoot.getCompound("block_states").getList("palette", NbtElement.COMPOUND_TYPE);
 
-                    Dynamic<NbtElement> dynamic = new Dynamic<>(NbtOps.INSTANCE, paletteEntry);
-                    palette.set(j, fixer.update(TypeReferences.BLOCK_STATE, dynamic, oldVersion, targetVersion).getValue());
+                    for (int j = 0; j < palette.size(); j++) {
+                        var paletteEntry = palette.getCompound(j);
+
+                        Dynamic<NbtElement> dynamic = new Dynamic<>(NbtOps.INSTANCE, paletteEntry);
+                        palette.set(j, fixer.update(TypeReferences.BLOCK_STATE, dynamic, oldVersion, targetVersion).getValue());
+                    }
+                } else {
+                    LOGGER.warn("Couldn't apply datafixers to template because databreaker is present!");
                 }
             }
 

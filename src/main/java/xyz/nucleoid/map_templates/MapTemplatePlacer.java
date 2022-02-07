@@ -54,12 +54,13 @@ public final class MapTemplatePlacer {
             lightingProvider.setColumnEnabled(chunkPos, false);
             lightingProvider.setRetainData(chunkPos, false);
 
-            for (int y = -1; y < 17; y++) {
+
+            for (int y = lightingProvider.getBottomY(); y < lightingProvider.getTopY(); y++) {
                 lightingProvider.enqueueSectionData(LightType.BLOCK, ChunkSectionPos.from(chunkPos, y), null, true);
                 lightingProvider.enqueueSectionData(LightType.SKY, ChunkSectionPos.from(chunkPos, y), null, true);
             }
 
-            for (int y = 0; y < 16; y++) {
+            for (int y = world.getBottomSectionCoord(); y < world.getTopSectionCoord(); y++) {
                 lightingProvider.setSectionStatus(ChunkSectionPos.from(chunkPos, y), true);
             }
         }
