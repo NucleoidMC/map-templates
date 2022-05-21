@@ -36,11 +36,11 @@ public final class MapTemplateMetadata {
      *
      * @param marker the marker tag to index this region by
      * @param bounds the area over which this region exists
-     * @param tag arbitrary attached data
+     * @param nbt arbitrary attached data
      * @return the added region
      */
-    public TemplateRegion addRegion(String marker, BlockBounds bounds, NbtCompound tag) {
-        TemplateRegion region = new TemplateRegion(marker, bounds, tag);
+    public TemplateRegion addRegion(String marker, BlockBounds bounds, NbtCompound nbt) {
+        TemplateRegion region = new TemplateRegion(marker, bounds, nbt);
         this.regions.add(region);
         return region;
     }
@@ -102,7 +102,7 @@ public final class MapTemplateMetadata {
     /**
      * Sets the arbitrary data of the map.
      *
-     * @param data the data as a compound tag
+     * @param data the data as an NBT compound
      */
     public void setData(NbtCompound data) {
         this.data = data;
@@ -111,7 +111,7 @@ public final class MapTemplateMetadata {
     /**
      * Gets the arbitrary data of the map.
      *
-     * @return the data as a compound tag
+     * @return the data as an NBT compound
      */
     public NbtCompound getData() {
         return this.data;

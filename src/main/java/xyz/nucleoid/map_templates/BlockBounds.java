@@ -22,24 +22,16 @@ import java.util.Random;
 
 /**
  * Represents an axis-aligned-bounding-box aligned to the block grid.
- *
+ * <p>
  * This is made up of an inclusive minimum and maximum {@link BlockPos}.
  */
-public final class BlockBounds implements Iterable<BlockPos> {
-    public static final Codec<BlockBounds> CODEC = RecordCodecBuilder.create(instance -> {
-        return instance.group(
-                BlockPos.CODEC.fieldOf("min").forGetter(b -> b.min),
-                BlockPos.CODEC.fieldOf("max").forGetter(b -> b.max)
-        ).apply(instance, BlockBounds::new);
-    });
-
-    private final BlockPos min;
-    private final BlockPos max;
-
-    private BlockBounds(BlockPos min, BlockPos max) {
-        this.min = min;
-        this.max = max;
-    }
+public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockPos> {
+    public static final Codec<BlockBounds> CODEC = RecordCodecBuilder.create(instance ->
+            instance.group(
+                    BlockPos.CODEC.fieldOf("min").forGetter(BlockBounds::min),
+                    BlockPos.CODEC.fieldOf("max").forGetter(BlockBounds::max)
+            ).apply(instance, BlockBounds::new)
+    );
 
     public static BlockBounds of(BlockPos a, BlockPos b) {
         return new BlockBounds(min(a, b), max(a, b));
@@ -113,14 +105,6 @@ public final class BlockBounds implements Iterable<BlockPos> {
         var min = min(this.min(), bounds.min());
         var max = max(this.max(), bounds.max());
         return new BlockBounds(min, max);
-    }
-
-    public BlockPos min() {
-        return this.min;
-    }
-
-    public BlockPos max() {
-        return this.max;
     }
 
     public BlockPos size() {
@@ -218,8 +202,8 @@ public final class BlockBounds implements Iterable<BlockPos> {
     }
 
     public NbtCompound serialize(NbtCompound root) {
-        root.putIntArray("min", new int[] { this.min.getX(), this.min.getY(), this.min.getZ() });
-        root.putIntArray("max", new int[] { this.max.getX(), this.max.getY(), this.max.getZ() });
+        root.putIntArray("min", new int[]{this.min.getX(), this.min.getY(), this.min.getZ()});
+        root.putIntArray("max", new int[]{this.max.getX(), this.max.getY(), this.max.getZ()});
         return root;
     }
 

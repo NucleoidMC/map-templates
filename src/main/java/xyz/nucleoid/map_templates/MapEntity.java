@@ -15,39 +15,35 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
-public final class MapEntity {
-    private final Vec3d position;
-    final NbtCompound tag;
+public record MapEntity(Vec3d position, NbtCompound nbt) {
+    public NbtCompound createEntityNbt(BlockPos origin) {
+        var nbt = this.nbt.copy();
 
-    public MapEntity(Vec3d position, NbtCompound tag) {
-        this.position = position;
-        this.tag = tag;
-    }
-
-    public Vec3d getPosition() {
-        return this.position;
-    }
-
-    public NbtCompound createEntityTag(BlockPos origin) {
-        var tag = this.tag.copy();
-
-        var chunkLocalPos = listToPos(this.tag.getList("Pos", NbtElement.DOUBLE_TYPE));
+        var chunkLocalPos = listToPos(this.nbt.getList("Pos", NbtElement.DOUBLE_TYPE));
 
         var worldPosition = this.position.add(origin.getX(), origin.getY(), origin.getZ());
-        tag.put("Pos", posToList(worldPosition));
+        nbt.put("Pos", posToList(worldPosition));
 
-        if (tag.contains("TileX", NbtElement.INT_TYPE)) {
-            tag.putInt("TileX", MathHelper.floor(tag.getInt("TileX") + worldPosition.x - chunkLocalPos.x));
-            tag.putInt("TileY", MathHelper.floor(tag.getInt("TileY") + worldPosition.y - chunkLocalPos.y));
-            tag.putInt("TileZ", MathHelper.floor(tag.getInt("TileZ") + worldPosition.z - chunkLocalPos.z));
+        if (nbt.contains("TileX", NbtElement.INT_TYPE)) {
+            nbt.putInt("TileX", MathHelper.floor(nbt.getInt("TileX") + worldPosition.x - chunkLocalPos.x));
+            nbt.putInt("TileY", MathHelper.floor(nbt.getInt("TileY") + worldPosition.y - chunkLocalPos.y));
+            nbt.putInt("TileZ", MathHelper.floor(nbt.getInt("TileZ") + worldPosition.z - chunkLocalPos.z));
         }
 
-        return tag;
+        return nbt;
+    }
+
+    /**
+     * @deprecated use {@link #createEntityNbt(BlockPos)}
+     */
+    @Deprecated(forRemoval = true)
+    public NbtCompound createEntityTag(BlockPos origin) {
+        return createEntityNbt(origin);
     }
 
     public void createEntities(World world, BlockPos origin, Consumer<Entity> consumer) {
-        var tag = this.createEntityTag(origin);
-        EntityType.loadEntityWithPassengers(tag, world, entity -> {
+        var nbt = this.createEntityNbt(origin);
+        EntityType.loadEntityWithPassengers(nbt, world, entity -> {
             consumer.accept(entity);
             return entity;
         });
@@ -55,63 +51,71 @@ public final class MapEntity {
 
     @Nullable
     public static MapEntity fromEntity(Entity entity, Vec3d position) {
-        var tag = new NbtCompound();
-        if (!entity.saveNbt(tag)) {
+        var nbt = new NbtCompound();
+        if (!entity.saveNbt(nbt)) {
             return null;
         }
 
         // Avoid conflicts.
-        tag.remove("UUID");
+        nbt.remove("UUID");
 
         BlockPos minChunkPos = getMinChunkPosFor(position);
-        tag.put("Pos", posToList(position.subtract(minChunkPos.getX(), minChunkPos.getY(), minChunkPos.getZ())));
+        nbt.put("Pos", posToList(position.subtract(minChunkPos.getX(), minChunkPos.getY(), minChunkPos.getZ())));
 
         // AbstractDecorationEntity has special position handling with an attachment position.
-        if (tag.contains("TileX", NbtElement.INT_TYPE)) {
-            BlockPos localPos = new BlockPos(tag.getInt("TileX"), tag.getInt("TileY"), tag.getInt("TileZ"))
+        if (nbt.contains("TileX", NbtElement.INT_TYPE)) {
+            BlockPos localPos = new BlockPos(nbt.getInt("TileX"), nbt.getInt("TileY"), nbt.getInt("TileZ"))
                     .subtract(entity.getBlockPos())
                     .add(position.getX(), position.getY(), position.getZ())
                     .subtract(minChunkPos);
-            tag.putInt("TileX", localPos.getX());
-            tag.putInt("TileY", localPos.getY());
-            tag.putInt("TileZ", localPos.getZ());
+            nbt.putInt("TileX", localPos.getX());
+            nbt.putInt("TileY", localPos.getY());
+            nbt.putInt("TileZ", localPos.getZ());
         }
 
-        return new MapEntity(position, tag);
+        return new MapEntity(position, nbt);
     }
 
-    public static MapEntity fromTag(ChunkSectionPos sectionPos, NbtCompound tag) {
-        Vec3d localPos = listToPos(tag.getList("Pos", NbtElement.DOUBLE_TYPE));
+    public static MapEntity fromNbt(ChunkSectionPos sectionPos, NbtCompound nbt) {
+        Vec3d localPos = listToPos(nbt.getList("Pos", NbtElement.DOUBLE_TYPE));
         Vec3d globalPos = localPos.add(sectionPos.getMinX(), sectionPos.getMinY(), sectionPos.getMinZ());
 
-        return new MapEntity(globalPos, tag);
+        return new MapEntity(globalPos, nbt);
+    }
+
+    /**
+     * @deprecated use {@link #fromNbt(ChunkSectionPos, NbtCompound)}
+     */
+    @Deprecated(forRemoval = true)
+    public static MapEntity fromTag(ChunkSectionPos sectionPos, NbtCompound nbt) {
+        return fromNbt(sectionPos, nbt);
     }
 
     MapEntity transformed(MapTransform transform) {
         var resultPosition = transform.transformedPoint(this.position);
-        var resultTag = this.tag.copy();
+        var resultNbt = this.nbt.copy();
 
         var minChunkPos = getMinChunkPosFor(this.position);
         var minResultChunkPos = getMinChunkPosFor(resultPosition);
 
-        resultTag.put("Pos", posToList(resultPosition.subtract(minResultChunkPos.getX(), minResultChunkPos.getY(), minResultChunkPos.getZ())));
+        resultNbt.put("Pos", posToList(resultPosition.subtract(minResultChunkPos.getX(), minResultChunkPos.getY(), minResultChunkPos.getZ())));
 
         // AbstractDecorationEntity has special position handling with an attachment position.
-        if (resultTag.contains("TileX", NbtElement.INT_TYPE)) {
+        if (resultNbt.contains("TileX", NbtElement.INT_TYPE)) {
             var attachedPos = new BlockPos(
-                    resultTag.getInt("TileX") + minChunkPos.getX(),
-                    resultTag.getInt("TileY") + minChunkPos.getY(),
-                    resultTag.getInt("TileZ") + minChunkPos.getZ()
+                    resultNbt.getInt("TileX") + minChunkPos.getX(),
+                    resultNbt.getInt("TileY") + minChunkPos.getY(),
+                    resultNbt.getInt("TileZ") + minChunkPos.getZ()
             );
 
             var localAttachedPos = transform.transformedPoint(attachedPos)
                     .subtract(minResultChunkPos);
-            resultTag.putInt("TileX", localAttachedPos.getX());
-            resultTag.putInt("TileY", localAttachedPos.getY());
-            resultTag.putInt("TileZ", localAttachedPos.getZ());
+            resultNbt.putInt("TileX", localAttachedPos.getX());
+            resultNbt.putInt("TileY", localAttachedPos.getY());
+            resultNbt.putInt("TileZ", localAttachedPos.getZ());
         }
 
-        return new MapEntity(resultPosition, resultTag);
+        return new MapEntity(resultPosition, resultNbt);
     }
 
     private static BlockPos getMinChunkPosFor(Vec3d position) {
