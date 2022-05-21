@@ -39,17 +39,17 @@ public final class TemplateRegion {
         this.data = data;
     }
 
-    public NbtCompound serialize(NbtCompound tag) {
-        tag.putString("marker", this.marker);
-        this.bounds.serialize(tag);
-        tag.put("data", this.data);
-        return tag;
+    public NbtCompound serialize(NbtCompound nbt) {
+        nbt.putString("marker", this.marker);
+        this.bounds.serialize(nbt);
+        nbt.put("data", this.data);
+        return nbt;
     }
 
-    public static TemplateRegion deserialize(NbtCompound tag) {
-        var marker = tag.getString("marker");
-        var data = tag.getCompound("data");
-        return new TemplateRegion(marker, BlockBounds.deserialize(tag), data);
+    public static TemplateRegion deserialize(NbtCompound nbt) {
+        var marker = nbt.getString("marker");
+        var data = nbt.getCompound("data");
+        return new TemplateRegion(marker, BlockBounds.deserialize(nbt), data);
     }
 
     public TemplateRegion copy() {

@@ -69,7 +69,7 @@ public final class MapTemplateSerializer {
 
     private static void load(MapTemplate template, NbtCompound root, DataFixer fixer) {
         int oldVersion = getDataVersion(root);
-        int targetVersion = SharedConstants.getGameVersion().getWorldVersion();
+        int targetVersion = SharedConstants.getGameVersion().getSaveVersion().getId();
 
         var chunkList = root.getList("chunks", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < chunkList.size(); i++) {
@@ -153,7 +153,7 @@ public final class MapTemplateSerializer {
     private static NbtCompound save(MapTemplate template) {
         var root = new NbtCompound();
 
-        int worldVersion = SharedConstants.getGameVersion().getWorldVersion();
+        int worldVersion = SharedConstants.getGameVersion().getSaveVersion().getId();
         root.putInt("data_version", worldVersion);
 
         var chunkList = new NbtList();

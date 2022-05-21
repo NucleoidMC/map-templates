@@ -10,13 +10,7 @@ import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.WorldChunk;
 
-public final class MapTemplatePlacer {
-    private final MapTemplate template;
-
-    public MapTemplatePlacer(MapTemplate template) {
-        this.template = template;
-    }
-
+public record MapTemplatePlacer(MapTemplate template) {
     public void placeAt(ServerWorld world, BlockPos origin) {
         var chunkCache = this.collectChunks(world, origin, this.template.bounds);
 
@@ -90,7 +84,7 @@ public final class MapTemplatePlacer {
             long chunkPos = ChunkPos.toLong(chunkX, chunkZ);
             var chunk = chunkCache.get(chunkPos);
 
-            var blockEntity = template.getBlockEntityTag(templatePos, worldPos);
+            var blockEntity = template.getBlockEntityNbt(templatePos, worldPos);
             if (blockEntity != null) {
                 chunk.addPendingBlockEntityNbt(blockEntity);
             }
@@ -112,9 +106,9 @@ public final class MapTemplatePlacer {
             int chunkZ = ChunkSectionPos.unpackZ(chunkPos);
 
             var entities = template.getEntitiesInChunk(chunkX, chunkY, chunkZ);
-            entities.forEach(mapEntity -> {
-                mapEntity.createEntities(world, origin, world::spawnEntity);
-            });
+            entities.forEach(mapEntity ->
+                    mapEntity.createEntities(world, origin, world::spawnEntity)
+            );
         }
     }
 }
