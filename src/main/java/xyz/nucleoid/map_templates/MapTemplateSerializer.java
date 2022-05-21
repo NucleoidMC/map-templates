@@ -13,7 +13,6 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.resource.Resource;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -38,9 +37,13 @@ public final class MapTemplateSerializer {
         var path = getResourcePathFor(identifier);
 
         var resourceManager = server.getResourceManager();
-        try (Resource resource = resourceManager.getResource(path)) {
-            return loadFrom(resource.getInputStream());
+        var resource = resourceManager.getResource(path);
+
+        if (resource.isEmpty()) {
+            throw new IOException("No resource found for " + identifier);
         }
+
+        return loadFrom(resource.get().getInputStream());
     }
 
     public static MapTemplate loadFrom(InputStream input) throws IOException {
@@ -63,13 +66,17 @@ public final class MapTemplateSerializer {
         return 2586;
     }
 
+    private static int getSaveVersion() {
+        return SharedConstants.getGameVersion().getSaveVersion().getId();
+    }
+
     private static void load(MapTemplate template, NbtCompound root) {
         load(template, root, Schemas.getFixer());
     }
 
     private static void load(MapTemplate template, NbtCompound root, DataFixer fixer) {
         int oldVersion = getDataVersion(root);
-        int targetVersion = SharedConstants.getGameVersion().getSaveVersion().getId();
+        int targetVersion = getSaveVersion();
 
         var chunkList = root.getList("chunks", NbtElement.COMPOUND_TYPE);
         for (int i = 0; i < chunkList.size(); i++) {
@@ -153,7 +160,7 @@ public final class MapTemplateSerializer {
     private static NbtCompound save(MapTemplate template) {
         var root = new NbtCompound();
 
-        int worldVersion = SharedConstants.getGameVersion().getSaveVersion().getId();
+        int worldVersion = getSaveVersion();
         root.putInt("data_version", worldVersion);
 
         var chunkList = new NbtList();
