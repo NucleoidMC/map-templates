@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class MapChunk {
-    private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer.createCodec(Block.STATE_IDS, BlockState.CODEC, PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
+    private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer.method_44343(Block.STATE_IDS, BlockState.CODEC, PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
 
     private final ChunkSectionPos pos;
 

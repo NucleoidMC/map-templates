@@ -10,15 +10,13 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.random.AbstractRandom;
-import net.minecraft.util.math.random.SimpleRandom;
+import net.minecraft.util.math.random.Random;
 import net.minecraft.world.HeightLimitView;
 import net.minecraft.world.chunk.Chunk;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
-import java.util.Random;
 
 /**
  * Represents an axis-aligned-bounding-box aligned to the block grid.
@@ -178,15 +176,7 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
         return chunks;
     }
 
-    /**
-     * @deprecated Use an instance of {@link AbstractRandom} instead
-     */
-    @Deprecated
     public BlockPos sampleBlock(Random random) {
-        return this.sampleBlock(new SimpleRandom(random.nextLong()));
-    }
-
-    public BlockPos sampleBlock(AbstractRandom random) {
         return new BlockPos(
                 random.nextBetween(this.min.getX(), this.max.getX()),
                 random.nextBetween(this.min.getY(), this.max.getY()),

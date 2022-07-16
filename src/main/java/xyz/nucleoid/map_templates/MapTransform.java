@@ -1,7 +1,7 @@
 package xyz.nucleoid.map_templates;
 
 import net.minecraft.block.BlockState;
-import net.minecraft.structure.Structure;
+import net.minecraft.structure.StructureTemplate;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.BlockPos;
@@ -33,12 +33,12 @@ public interface MapTransform {
 
             @Override
             public BlockPos transformedPoint(BlockPos pos) {
-                return Structure.transformAround(pos, mirror, rotation, pivot);
+                return StructureTemplate.transformAround(pos, mirror, rotation, pivot);
             }
 
             @Override
             public Vec3d transformedPoint(Vec3d pos) {
-                return Structure.transformAround(pos, mirror, rotation, pivot);
+                return StructureTemplate.transformAround(pos, mirror, rotation, pivot);
             }
 
             @Override
