@@ -10,6 +10,13 @@
   "entrypoints": {
     "main": []
   },
+  "custom": {
+    "modmenu": {
+      "badges": [
+        "library"
+      ]
+    }
+  },
   "depends": {
     "minecraft": "1.19.x",
     "java": ">=17"
