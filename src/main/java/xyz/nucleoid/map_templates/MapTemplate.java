@@ -116,14 +116,6 @@ public final class MapTemplate {
         }
     }
 
-    /**
-     * @deprecated use {@link #setBlockEntityNbt(BlockPos, NbtCompound)}
-     */
-    @Deprecated(forRemoval = true)
-    public void setBlockEntityTag(BlockPos pos, @Nullable NbtCompound entityNbt) {
-        setBlockEntityNbt(pos, entityNbt);
-    }
-
     public BlockState getBlockState(BlockPos pos) {
         var chunk = this.chunks.get(chunkPos(pos));
         if (chunk != null) {
@@ -148,24 +140,6 @@ public final class MapTemplate {
             return nbt;
         }
         return null;
-    }
-
-    /**
-     * @deprecated use {@link #getBlockEntityNbt(BlockPos)}
-     */
-    @Nullable
-    @Deprecated(forRemoval = true)
-    public NbtCompound getBlockEntityTag(BlockPos localPos) {
-        return getBlockEntityNbt(localPos);
-    }
-
-    /**
-     * @deprecated use {@link #getBlockEntityNbt(BlockPos, BlockPos)}
-     */
-    @Nullable
-    @Deprecated(forRemoval = true)
-    public NbtCompound getBlockEntityTag(BlockPos localPos, BlockPos worldPos) {
-        return getBlockEntityNbt(localPos, worldPos);
     }
 
     /**
