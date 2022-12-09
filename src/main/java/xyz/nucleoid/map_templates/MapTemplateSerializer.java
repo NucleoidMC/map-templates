@@ -13,12 +13,12 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.registry.Registry;
-import net.minecraft.util.registry.RegistryKey;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -153,7 +153,7 @@ public final class MapTemplateSerializer {
 
         var biomeId = root.getString("biome");
         if (!Strings.isNullOrEmpty(biomeId)) {
-            template.biome = RegistryKey.of(Registry.BIOME_KEY, new Identifier(biomeId));
+            template.biome = RegistryKey.of(RegistryKeys.BIOME, new Identifier(biomeId));
         }
     }
 
