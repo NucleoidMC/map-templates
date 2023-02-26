@@ -58,7 +58,7 @@ public record MapEntity(Vec3d position, NbtCompound nbt) {
         if (nbt.contains("TileX", NbtElement.INT_TYPE)) {
             BlockPos localPos = new BlockPos(nbt.getInt("TileX"), nbt.getInt("TileY"), nbt.getInt("TileZ"))
                     .subtract(entity.getBlockPos())
-                    .add(position.getX(), position.getY(), position.getZ())
+                    .add(MathHelper.floor(position.getX()), MathHelper.floor(position.getY()), MathHelper.floor(position.getZ()))
                     .subtract(minChunkPos);
             nbt.putInt("TileX", localPos.getX());
             nbt.putInt("TileY", localPos.getY());
