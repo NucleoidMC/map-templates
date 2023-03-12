@@ -2,6 +2,7 @@ package xyz.nucleoid.map_templates;
 
 import com.google.common.base.Strings;
 import com.mojang.datafixers.DataFixer;
+import com.mojang.datafixers.DSL.TypeReference;
 import com.mojang.serialization.Dynamic;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import net.fabricmc.loader.api.FabricLoader;
@@ -83,7 +84,7 @@ public final class MapTemplateSerializer {
             var chunkRoot = chunkList.getCompound(i);
 
             if (targetVersion > oldVersion) {
-                // Apply data fixer to chunk palette
+                // Apply data fixer to chunk palette and entities
 
                 if (oldVersion <= 2730) {
                     var palette = chunkRoot.getList("palette", NbtElement.COMPOUND_TYPE);
@@ -98,13 +99,10 @@ public final class MapTemplateSerializer {
 
                 if (!SKIP_FIXERS) {
                     var palette = chunkRoot.getCompound("block_states").getList("palette", NbtElement.COMPOUND_TYPE);
+                    updateList(palette, fixer, TypeReferences.BLOCK_STATE, oldVersion, targetVersion);
 
-                    for (int j = 0; j < palette.size(); j++) {
-                        var paletteEntry = palette.getCompound(j);
-
-                        Dynamic<NbtElement> dynamic = new Dynamic<>(NbtOps.INSTANCE, paletteEntry);
-                        palette.set(j, fixer.update(TypeReferences.BLOCK_STATE, dynamic, oldVersion, targetVersion).getValue());
-                    }
+                    var entities = chunkRoot.getList("entities", NbtElement.COMPOUND_TYPE);
+                    updateList(entities, fixer, TypeReferences.ENTITY, oldVersion, targetVersion);
                 } else {
                     LOGGER.warn("Couldn't apply datafixers to template because databreaker is present!");
                 }
@@ -154,6 +152,17 @@ public final class MapTemplateSerializer {
         var biomeId = root.getString("biome");
         if (!Strings.isNullOrEmpty(biomeId)) {
             template.biome = RegistryKey.of(RegistryKeys.BIOME, new Identifier(biomeId));
+        }
+    }
+
+    private static void updateList(NbtList list, DataFixer fixer, TypeReference type, int oldVersion, int targetVersion) {
+        if (list == null) return;
+
+        for (int i = 0; i < list.size(); i++) {
+            var nbt = list.getCompound(i);
+
+            Dynamic<NbtElement> dynamic = new Dynamic<>(NbtOps.INSTANCE, nbt);
+            list.set(i, fixer.update(type, dynamic, oldVersion, targetVersion).getValue());
         }
     }
 
