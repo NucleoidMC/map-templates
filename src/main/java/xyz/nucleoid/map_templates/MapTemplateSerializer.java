@@ -104,7 +104,7 @@ public final class MapTemplateSerializer {
                     var entities = chunkRoot.getList("entities", NbtElement.COMPOUND_TYPE);
                     updateList(entities, fixer, TypeReferences.ENTITY, oldVersion, targetVersion);
                 } else {
-                    LOGGER.warn("Couldn't apply datafixers to template because databreaker is present!");
+                    LOGGER.error("Couldn't apply datafixers to template because databreaker is present!");
                 }
             }
 
