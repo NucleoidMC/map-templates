@@ -50,8 +50,8 @@ public record MapTemplatePlacer(MapTemplate template) {
 
 
             for (int y = lightingProvider.getBottomY(); y < lightingProvider.getTopY(); y++) {
-                lightingProvider.enqueueSectionData(LightType.BLOCK, ChunkSectionPos.from(chunkPos, y), null, true);
-                lightingProvider.enqueueSectionData(LightType.SKY, ChunkSectionPos.from(chunkPos, y), null, true);
+                lightingProvider.enqueueSectionData(LightType.BLOCK, ChunkSectionPos.from(chunkPos, y), null);
+                lightingProvider.enqueueSectionData(LightType.SKY, ChunkSectionPos.from(chunkPos, y), null);
             }
 
             for (int y = world.getBottomSectionCoord(); y < world.getTopSectionCoord(); y++) {
