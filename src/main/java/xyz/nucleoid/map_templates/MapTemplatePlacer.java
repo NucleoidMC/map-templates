@@ -14,8 +14,6 @@ public record MapTemplatePlacer(MapTemplate template) {
     public void placeAt(ServerWorld world, BlockPos origin) {
         var chunkCache = this.collectChunks(world, origin, this.template.bounds);
 
-        this.clearLighting(world, chunkCache);
-
         this.placeBlocks(origin, chunkCache);
         this.placeEntities(world, origin);
     }
@@ -34,30 +32,6 @@ public record MapTemplatePlacer(MapTemplate template) {
         }
 
         return chunks;
-    }
-
-    private void clearLighting(ServerWorld world, Long2ObjectMap<WorldChunk> chunkCache) {
-        var lightingProvider = world.getChunkManager().getLightingProvider();
-
-        // delete all lighting data so that it gets recomputed
-        for (var chunk : chunkCache.values()) {
-            var chunkPos = chunk.getPos();
-
-            chunk.setLightOn(false);
-
-            lightingProvider.setColumnEnabled(chunkPos, false);
-            lightingProvider.setRetainData(chunkPos, false);
-
-
-            for (int y = lightingProvider.getBottomY(); y < lightingProvider.getTopY(); y++) {
-                lightingProvider.enqueueSectionData(LightType.BLOCK, ChunkSectionPos.from(chunkPos, y), null);
-                lightingProvider.enqueueSectionData(LightType.SKY, ChunkSectionPos.from(chunkPos, y), null);
-            }
-
-            for (int y = world.getBottomSectionCoord(); y < world.getTopSectionCoord(); y++) {
-                lightingProvider.setSectionStatus(ChunkSectionPos.from(chunkPos, y), true);
-            }
-        }
     }
 
     private void placeBlocks(BlockPos origin, Long2ObjectMap<WorldChunk> chunkCache) {
