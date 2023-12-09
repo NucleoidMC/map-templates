@@ -14,6 +14,7 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtTagSizeTracker;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
@@ -49,7 +50,7 @@ public final class MapTemplateSerializer {
 
     public static MapTemplate loadFrom(InputStream input) throws IOException {
         var template = MapTemplate.createEmpty();
-        load(template, NbtIo.readCompressed(input));
+        load(template, NbtIo.readCompressed(input, NbtTagSizeTracker.ofUnlimitedBytes()));
         return template;
     }
 
