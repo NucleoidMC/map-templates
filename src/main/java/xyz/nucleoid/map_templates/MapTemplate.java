@@ -9,6 +9,7 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
@@ -96,9 +97,9 @@ public final class MapTemplate {
         }
     }
 
-    public void setBlockEntity(BlockPos pos, @Nullable BlockEntity entity) {
+    public void setBlockEntity(BlockPos pos, @Nullable BlockEntity entity, RegistryWrapper.WrapperLookup registryLookup) {
         if (entity != null) {
-            this.setBlockEntityNbt(pos, entity.createNbtWithId());
+            this.setBlockEntityNbt(pos, entity.createNbtWithId(registryLookup));
         } else {
             this.setBlockEntityNbt(pos, null);
         }

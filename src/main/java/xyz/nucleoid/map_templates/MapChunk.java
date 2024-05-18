@@ -66,7 +66,7 @@ public final class MapChunk {
     }
 
     public void serialize(NbtCompound nbt) {
-        nbt.put("block_states", BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow(false, (e) -> {}));
+        nbt.put("block_states", BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow());
 
         if (!this.entities.isEmpty()) {
             var entitiesNbt = new NbtList();
@@ -80,7 +80,7 @@ public final class MapChunk {
     public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound nbt) {
         var chunk = new MapChunk(pos);
         var container = BLOCK_CODEC.parse(NbtOps.INSTANCE, nbt.getCompound("block_states"))
-                .promotePartial(errorMessage -> {}).get().left();
+                .promotePartial(errorMessage -> {}).result();
 
         if (container.isPresent()) {
             chunk.container = container.get();
