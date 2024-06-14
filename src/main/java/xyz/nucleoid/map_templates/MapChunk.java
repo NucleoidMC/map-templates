@@ -1,6 +1,11 @@
 package xyz.nucleoid.map_templates;
 
 import com.mojang.serialization.Codec;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -9,14 +14,28 @@ import net.minecraft.nbt.*;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.chunk.PalettedContainer;
+import org.apache.commons.codec.digest.Blake3;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public final class MapChunk {
     private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer.createPalettedContainerCodec(Block.STATE_IDS, BlockState.CODEC, PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
 
     private final ChunkSectionPos pos;
+
+    /**
+     * BLAKE3 hash of the block states in this chunk section
+     */
+    private final byte[] blockStatesHash = new byte[32];
+
+    /**
+     * Whether the above hash represents currently-stored block data.
+     */
+    private boolean blockStatesHashDirty = true;
+
 
     private PalettedContainer<BlockState> container = new PalettedContainer<>(Block.STATE_IDS, Blocks.AIR.getDefaultState(), PalettedContainer.PaletteProvider.BLOCK_STATE);
     private final List<MapEntity> entities = new ArrayList<>();
@@ -26,6 +45,7 @@ public final class MapChunk {
     }
 
     public void set(int x, int y, int z, BlockState state) {
+        this.blockStatesHashDirty = true;
         this.container.set(x, y, z, state);
     }
 
@@ -66,7 +86,8 @@ public final class MapChunk {
     }
 
     public void serialize(NbtCompound nbt) {
-        nbt.put("block_states", BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow(false, (e) -> {}));
+        var blockStatesNbt = BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow(false, (e) -> {});
+        nbt.put("block_states", blockStatesNbt);
 
         if (!this.entities.isEmpty()) {
             var entitiesNbt = new NbtList();
@@ -79,12 +100,11 @@ public final class MapChunk {
 
     public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound nbt) {
         var chunk = new MapChunk(pos);
+        var blockStatesNbt = nbt.getCompound("block_states");
         var container = BLOCK_CODEC.parse(NbtOps.INSTANCE, nbt.getCompound("block_states"))
                 .promotePartial(errorMessage -> {}).get().left();
 
-        if (container.isPresent()) {
-            chunk.container = container.get();
-        }
+        container.ifPresent(blockStatePalettedContainer -> chunk.container = blockStatePalettedContainer);
 
         if (nbt.contains("entities", NbtElement.LIST_TYPE)) {
             var entitiesNbt = nbt.getList("entities", NbtElement.COMPOUND_TYPE);
@@ -94,5 +114,66 @@ public final class MapChunk {
         }
 
         return chunk;
+    }
+
+    private NbtElement serializeBlockStates() {
+        return BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow(false, (e) -> {});
+    }
+
+    /**
+     * Recompute the hash if it is dirty.
+     */
+    private void recomputeHash() {
+        if (this.blockStatesHashDirty) {
+            try {
+                var md = Blake3.initHash();
+
+                this.serializeBlockStates().write(new DataOutputStream(new OutputStream() {
+                    private ByteBuffer tmpBuffer;
+                    @Override
+                    public void write(int i) {
+                        if (tmpBuffer == null) {
+                            tmpBuffer = ByteBuffer.allocate(4);
+                        } else {
+                            tmpBuffer.clear();
+                        }
+
+                        tmpBuffer.putInt(i);
+                        md.update(tmpBuffer.array());
+                    }
+
+                    @Override
+                    public void write(byte @NotNull [] bytes, int off, int len) {
+                        md.update(bytes, off, len);
+                    }
+                }));
+
+                md.doFinalize(this.blockStatesHash, 0, 32);
+            } catch (IOException e) {
+                // Unreachable
+                throw new RuntimeException(e);
+            }
+
+            this.blockStatesHashDirty = false;
+        }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (!(obj instanceof MapChunk)) {
+            return false;
+        }
+
+        MapChunk other = (MapChunk) obj;
+
+        if (!this.pos.equals(other.pos)) {
+            return false;
+        }
+
+        this.recomputeHash();
+        other.recomputeHash();
+        return Arrays.equals(this.blockStatesHash, other.blockStatesHash);
     }
 }

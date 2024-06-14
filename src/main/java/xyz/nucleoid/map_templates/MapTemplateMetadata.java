@@ -116,4 +116,12 @@ public final class MapTemplateMetadata {
     public NbtCompound getData() {
         return this.data;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof MapTemplateMetadata)) return false;
+
+        return this.data.equals(((MapTemplateMetadata) o).data) && this.regions.equals(((MapTemplateMetadata) o).regions);
+    }
 }

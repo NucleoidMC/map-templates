@@ -55,4 +55,11 @@ public final class TemplateRegion {
     public TemplateRegion copy() {
         return new TemplateRegion(this.marker, this.bounds, this.data != null ? this.data.copy() : null);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof TemplateRegion other)) return false;
+        return this.data.equals(other.data) && this.marker.equals(other.marker) && this.bounds.equals(other.bounds);
+    }
 }
