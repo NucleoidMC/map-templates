@@ -1,8 +1,6 @@
 package xyz.nucleoid.map_templates;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.*;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
@@ -13,10 +11,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.*;
 import net.minecraft.world.Heightmap;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
@@ -364,6 +359,45 @@ public final class MapTemplate {
         secondary.mergeInto(result);
         primary.mergeInto(result);
         return result;
+    }
+
+    /**
+     * All the aspects in which two map templates differ.
+     *
+     * @param dataChanged whether the metadata has changed
+     * @param chunksChanged whether the chunks and blocks of the template has changed
+     * @param biomeChanged whether the biome of the template has changed
+     * @param blockEntitiesChanged whether the block entities in the template have changed
+     */
+    public record Diff(boolean dataChanged, boolean chunksChanged, boolean biomeChanged, boolean blockEntitiesChanged) {
+        public boolean needsRegeneration() {
+            return this.chunksChanged || this.biomeChanged || this.blockEntitiesChanged;
+        }
+    }
+
+    /**
+     * Calculate the difference in chunks between the two semplates.
+     *
+     * @param a the first template
+     * @param b the second template
+     */
+    public static Diff diff(MapTemplate a, MapTemplate b) {
+        if (a == b) {
+            return new Diff(false, false, false, false);
+        }
+
+        boolean chunksChanged = !(a.chunks.equals(b.chunks));
+        boolean dataChanged = !a.getMetadata().equals(b.getMetadata());
+        boolean biomeChanged = a.biome != b.biome;
+        boolean blockEntitiesChanged = !a.blockEntities.equals(b.blockEntities);
+        return new Diff(dataChanged, chunksChanged, biomeChanged, blockEntitiesChanged);
+    }
+
+    /**
+     * Calculate the difference in chunks between this and another template.
+    */
+    public Diff diff(MapTemplate other) {
+        return MapTemplate.diff(this, other);
     }
 
     public void mergeFrom(MapTemplate other) {
