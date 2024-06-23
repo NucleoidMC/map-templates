@@ -17,6 +17,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -45,17 +46,17 @@ public final class MapTemplateSerializer {
             throw new IOException("No resource found for " + identifier);
         }
 
-        return loadFrom(resource.get().getInputStream());
+        return loadFrom(resource.get().getInputStream(), server.getRegistryManager());
     }
 
-    public static MapTemplate loadFrom(InputStream input) throws IOException {
+    public static MapTemplate loadFrom(InputStream input, RegistryWrapper.WrapperLookup registryLookup) throws IOException {
         var template = MapTemplate.createEmpty();
-        load(template, NbtIo.readCompressed(input, NbtSizeTracker.ofUnlimitedBytes()));
+        load(template, NbtIo.readCompressed(input, NbtSizeTracker.ofUnlimitedBytes()), registryLookup);
         return template;
     }
 
-    public static void saveTo(MapTemplate template, OutputStream output) throws IOException {
-        var root = save(template);
+    public static void saveTo(MapTemplate template, OutputStream output, RegistryWrapper.WrapperLookup registryLookup) throws IOException {
+        var root = save(template, registryLookup);
         NbtIo.writeCompressed(root, output);
     }
 
@@ -72,11 +73,11 @@ public final class MapTemplateSerializer {
         return SharedConstants.getGameVersion().getSaveVersion().getId();
     }
 
-    private static void load(MapTemplate template, NbtCompound root) {
-        load(template, root, Schemas.getFixer());
+    private static void load(MapTemplate template, NbtCompound root, RegistryWrapper.WrapperLookup registryLookup) {
+        load(template, root, registryLookup, Schemas.getFixer());
     }
 
-    private static void load(MapTemplate template, NbtCompound root, DataFixer fixer) {
+    private static void load(MapTemplate template, NbtCompound root, RegistryWrapper.WrapperLookup registryLookup, DataFixer fixer) {
         int oldVersion = getDataVersion(root);
         int targetVersion = getSaveVersion();
 
@@ -116,7 +117,7 @@ public final class MapTemplateSerializer {
             }
 
             long pos = MapTemplate.chunkPos(posArray[0], posArray[1], posArray[2]);
-            var chunk = MapChunk.deserialize(ChunkSectionPos.from(pos), chunkRoot);
+            var chunk = MapChunk.deserialize(ChunkSectionPos.from(pos), chunkRoot, registryLookup);
 
             template.chunks.put(pos, chunk);
         }
@@ -167,7 +168,7 @@ public final class MapTemplateSerializer {
         }
     }
 
-    private static NbtCompound save(MapTemplate template) {
+    private static NbtCompound save(MapTemplate template, RegistryWrapper.WrapperLookup registryLookup) {
         var root = new NbtCompound();
 
         int worldVersion = getSaveVersion();
@@ -182,7 +183,7 @@ public final class MapTemplateSerializer {
             var chunkRoot = new NbtCompound();
 
             chunkRoot.putIntArray("pos", new int[] { pos.getX(), pos.getY(), pos.getZ() });
-            chunk.serialize(chunkRoot);
+            chunk.serialize(chunkRoot, registryLookup);
 
             chunkList.add(chunkRoot);
         }

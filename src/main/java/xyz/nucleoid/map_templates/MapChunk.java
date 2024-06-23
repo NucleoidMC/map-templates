@@ -6,6 +6,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
 import net.minecraft.nbt.*;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.chunk.PalettedContainer;
@@ -65,7 +66,7 @@ public final class MapChunk {
         return this.entities;
     }
 
-    public void serialize(NbtCompound nbt) {
+    public void serialize(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
         nbt.put("block_states", BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow());
 
         if (!this.entities.isEmpty()) {
@@ -77,7 +78,7 @@ public final class MapChunk {
         }
     }
 
-    public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound nbt) {
+    public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
         var chunk = new MapChunk(pos);
         var container = BLOCK_CODEC.parse(NbtOps.INSTANCE, nbt.getCompound("block_states"))
                 .promotePartial(errorMessage -> {}).result();
