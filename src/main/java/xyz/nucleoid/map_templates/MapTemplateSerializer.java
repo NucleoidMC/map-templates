@@ -217,6 +217,6 @@ public final class MapTemplateSerializer {
     }
 
     public static Identifier getResourcePathFor(Identifier identifier) {
-        return Identifier.of(identifier.getNamespace(), "map_templates/" + identifier.getPath() + ".nbt");
+        return identifier.withPath(path -> "map_templates/" + path + ".nbt");
     }
 }
