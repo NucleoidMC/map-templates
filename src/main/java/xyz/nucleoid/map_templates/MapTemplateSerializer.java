@@ -151,9 +151,12 @@ public final class MapTemplateSerializer {
         template.bounds = BlockBounds.deserialize(root.getCompound("bounds"));
         metadata.data = root.getCompound("data");
 
-        var biomeId = root.getString("biome");
-        if (!Strings.isNullOrEmpty(biomeId)) {
-            template.biome = RegistryKey.of(RegistryKeys.BIOME, new Identifier(biomeId));
+        var biomeIdString = root.getString("biome");
+        if (!Strings.isNullOrEmpty(biomeIdString)) {
+            var biomeId = Identifier.tryParse(biomeIdString);
+            if (biomeId != null) {
+                template.biome = RegistryKey.of(RegistryKeys.BIOME, biomeId);
+            }
         }
     }
 
@@ -214,6 +217,6 @@ public final class MapTemplateSerializer {
     }
 
     public static Identifier getResourcePathFor(Identifier identifier) {
-        return new Identifier(identifier.getNamespace(), "map_templates/" + identifier.getPath() + ".nbt");
+        return Identifier.of(identifier.getNamespace(), "map_templates/" + identifier.getPath() + ".nbt");
     }
 }
