@@ -62,7 +62,7 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
     public static BlockBounds ofChunk(ChunkPos chunk, HeightLimitView world) {
         return new BlockBounds(
                 new BlockPos(chunk.getStartX(), world.getBottomY(), chunk.getStartZ()),
-                new BlockPos(chunk.getEndX(), world.getTopY(), chunk.getEndZ())
+                new BlockPos(chunk.getEndX(), world.getTopYInclusive(), chunk.getEndZ())
         );
     }
 

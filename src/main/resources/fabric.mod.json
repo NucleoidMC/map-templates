@@ -18,7 +18,7 @@
     }
   },
   "depends": {
-    "minecraft": ">=1.20.5-alpha.24.14.a",
+    "minecraft": ">=1.21.2-alpha.24.33.a",
     "java": ">=21"
   }
 }

@@ -2,6 +2,7 @@ package xyz.nucleoid.map_templates;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtDouble;
 import net.minecraft.nbt.NbtElement;
@@ -35,7 +36,7 @@ public record MapEntity(Vec3d position, NbtCompound nbt) {
 
     public void createEntities(World world, BlockPos origin, Consumer<Entity> consumer) {
         var nbt = this.createEntityNbt(origin);
-        EntityType.loadEntityWithPassengers(nbt, world, entity -> {
+        EntityType.loadEntityWithPassengers(nbt, world, SpawnReason.STRUCTURE, entity -> {
             consumer.accept(entity);
             return entity;
         });
