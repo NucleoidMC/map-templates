@@ -31,6 +31,18 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
             ).apply(instance, BlockBounds::new)
     );
 
+    public BlockBounds {
+        if (min.getX() > max.getX() || min.getY() > max.getY() || min.getZ() > max.getZ()) {
+            String message = String.format(
+                    "Minimum position (%d, %d, %d) of bounds must be smaller than maximum position (%d, %d, %d)",
+                    min.getX(), min.getY(), min.getZ(),
+                    max.getX(), max.getY(), max.getZ()
+            );
+
+            throw new IllegalArgumentException(message);
+        }
+    }
+
     public static BlockBounds of(BlockPos a, BlockPos b) {
         return new BlockBounds(min(a, b), max(a, b));
     }
