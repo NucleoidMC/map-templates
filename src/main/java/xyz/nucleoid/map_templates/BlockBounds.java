@@ -2,9 +2,11 @@ package xyz.nucleoid.map_templates;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.ChunkPos;
@@ -29,6 +31,12 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
                     BlockPos.CODEC.fieldOf("min").forGetter(BlockBounds::min),
                     BlockPos.CODEC.fieldOf("max").forGetter(BlockBounds::max)
             ).apply(instance, BlockBounds::new)
+    );
+
+    public static final PacketCodec<ByteBuf, BlockBounds> PACKET_CODEC = PacketCodec.tuple(
+            BlockPos.PACKET_CODEC, BlockBounds::min,
+            BlockPos.PACKET_CODEC, BlockBounds::max,
+            BlockBounds::of
     );
 
     public BlockBounds {
