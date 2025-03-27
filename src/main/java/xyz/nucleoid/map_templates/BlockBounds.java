@@ -218,8 +218,8 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
     }
 
     public static BlockBounds deserialize(NbtCompound root) {
-        var minArray = root.getIntArray("min");
-        var maxArray = root.getIntArray("max");
+        var minArray = root.getIntArray("min").orElseThrow();
+        var maxArray = root.getIntArray("max").orElseThrow();
         return new BlockBounds(
                 new BlockPos(minArray[0], minArray[1], minArray[2]),
                 new BlockPos(maxArray[0], maxArray[1], maxArray[2])
