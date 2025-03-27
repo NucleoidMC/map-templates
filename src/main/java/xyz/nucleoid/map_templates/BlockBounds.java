@@ -52,7 +52,7 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
     }
 
     public static BlockBounds of(BlockPos a, BlockPos b) {
-        return new BlockBounds(min(a, b), max(a, b));
+        return new BlockBounds(BlockPos.min(a, b), BlockPos.max(a, b));
     }
 
     public static BlockBounds of(int x0, int y0, int z0, int x1, int y1, int z1) {
@@ -113,15 +113,15 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
             return null;
         }
 
-        var min = max(this.min(), bounds.min());
-        var max = min(this.max(), bounds.max());
+        var min = BlockPos.max(this.min(), bounds.min());
+        var max = BlockPos.min(this.max(), bounds.max());
         return new BlockBounds(min, max);
     }
 
     @NotNull
     public BlockBounds union(BlockBounds bounds) {
-        var min = min(this.min(), bounds.min());
-        var max = max(this.max(), bounds.max());
+        var min = BlockPos.min(this.min(), bounds.min());
+        var max = BlockPos.max(this.max(), bounds.max());
         return new BlockBounds(min, max);
     }
 
@@ -226,19 +226,19 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
         );
     }
 
+    /**
+     * @deprecated Use {@link BlockPos#min}
+     */
+    @Deprecated
     public static BlockPos min(BlockPos a, BlockPos b) {
-        return new BlockPos(
-                Math.min(a.getX(), b.getX()),
-                Math.min(a.getY(), b.getY()),
-                Math.min(a.getZ(), b.getZ())
-        );
+        return BlockPos.min(a, b);
     }
 
+    /**
+     * @deprecated Use {@link BlockPos#max}
+     */
+    @Deprecated
     public static BlockPos max(BlockPos a, BlockPos b) {
-        return new BlockPos(
-                Math.max(a.getX(), b.getX()),
-                Math.max(a.getY(), b.getY()),
-                Math.max(a.getZ(), b.getZ())
-        );
+        return BlockPos.max(a, b);
     }
 }
