@@ -80,17 +80,16 @@ public final class MapChunk {
 
     public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
         var chunk = new MapChunk(pos);
-        var container = BLOCK_CODEC.parse(NbtOps.INSTANCE, nbt.getCompound("block_states"))
-                .promotePartial(errorMessage -> {}).result();
+        var container = nbt.get("block_states", BLOCK_CODEC);
 
         if (container.isPresent()) {
             chunk.container = container.get();
         }
 
-        if (nbt.contains("entities", NbtElement.LIST_TYPE)) {
-            var entitiesNbt = nbt.getList("entities", NbtElement.COMPOUND_TYPE);
-            for (var entityNbt : entitiesNbt) {
-                chunk.entities.add(MapEntity.fromNbt(pos, (NbtCompound) entityNbt));
+        var entitiesNbt = nbt.getListOrEmpty("entities");
+        for (var item : entitiesNbt) {
+            if (item instanceof NbtCompound entityNbt) {
+                chunk.entities.add(MapEntity.fromNbt(pos, entityNbt));
             }
         }
 

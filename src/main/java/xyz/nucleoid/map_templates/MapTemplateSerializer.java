@@ -22,6 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.util.math.Vec3i;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -61,12 +62,8 @@ public final class MapTemplateSerializer {
     }
 
     private static int getDataVersion(NbtCompound root) {
-        if (root.contains("data_version", NbtElement.NUMBER_TYPE)) {
-            return root.getInt("data_version");
-        }
-
-        // Data version for 1.16.5
-        return 2586;
+        // Fallback is data version for 1.16.5
+        return root.getInt("data_version", 2586);
     }
 
     private static int getSaveVersion() {
@@ -81,16 +78,16 @@ public final class MapTemplateSerializer {
         int oldVersion = getDataVersion(root);
         int targetVersion = getSaveVersion();
 
-        var chunkList = root.getList("chunks", NbtElement.COMPOUND_TYPE);
+        var chunkList = root.getListOrEmpty("chunks");
         for (int i = 0; i < chunkList.size(); i++) {
-            var chunkRoot = chunkList.getCompound(i);
+            var chunkRoot = chunkList.getCompoundOrEmpty(i);
 
             if (targetVersion > oldVersion) {
                 // Apply data fixer to chunk palette and entities
 
                 if (oldVersion <= 2730) {
-                    var palette = chunkRoot.getList("palette", NbtElement.COMPOUND_TYPE);
-                    var blockData = chunkRoot.getLongArray("block_states");
+                    var palette = chunkRoot.getListOrEmpty("palette");
+                    var blockData = chunkRoot.getLongArray("block_states").orElseGet(() -> new long[0]);
                     chunkRoot.remove("palette");
 
                     var blockStates = new NbtCompound();
@@ -100,39 +97,37 @@ public final class MapTemplateSerializer {
                 }
 
                 if (!SKIP_FIXERS) {
-                    var palette = chunkRoot.getCompound("block_states").getList("palette", NbtElement.COMPOUND_TYPE);
+                    var palette = chunkRoot.getCompoundOrEmpty("block_states").getListOrEmpty("palette");
                     updateList(palette, fixer, TypeReferences.BLOCK_STATE, oldVersion, targetVersion);
 
-                    var entities = chunkRoot.getList("entities", NbtElement.COMPOUND_TYPE);
+                    var entities = chunkRoot.getListOrEmpty("entities");
                     updateList(entities, fixer, TypeReferences.ENTITY, oldVersion, targetVersion);
                 } else {
                     LOGGER.error("Couldn't apply datafixers to template because databreaker is present!");
                 }
             }
 
-            var posArray = chunkRoot.getIntArray("pos");
-            if (posArray.length != 3) {
-                LOGGER.warn("Invalid chunk pos key: {}", posArray);
-                continue;
-            }
+            chunkRoot.get("pos", Vec3i.CODEC).ifPresentOrElse(posArray -> {
+                long pos = MapTemplate.chunkPos(posArray.getX(), posArray.getY(), posArray.getZ());
+                var chunk = MapChunk.deserialize(ChunkSectionPos.from(pos), chunkRoot, registryLookup);
 
-            long pos = MapTemplate.chunkPos(posArray[0], posArray[1], posArray[2]);
-            var chunk = MapChunk.deserialize(ChunkSectionPos.from(pos), chunkRoot, registryLookup);
-
-            template.chunks.put(pos, chunk);
+                template.chunks.put(pos, chunk);
+            }, () -> {
+                LOGGER.warn("Invalid chunk pos key: {}", chunkRoot.get("pos"));
+            });
         }
 
         var metadata = template.metadata;
 
-        var regionList = root.getList("regions", NbtElement.COMPOUND_TYPE);
+        var regionList = root.getListOrEmpty("regions");
         for (int i = 0; i < regionList.size(); i++) {
-            var regionRoot = regionList.getCompound(i);
+            var regionRoot = regionList.getCompoundOrEmpty(i);
             metadata.regions.add(TemplateRegion.deserialize(regionRoot));
         }
 
-        var blockEntityList = root.getList("block_entities", NbtElement.COMPOUND_TYPE);
+        var blockEntityList = root.getListOrEmpty("block_entities");
         for (int i = 0; i < blockEntityList.size(); i++) {
-            var blockEntity = blockEntityList.getCompound(i);
+            var blockEntity = blockEntityList.getCompoundOrEmpty(i);
 
             if (targetVersion > oldVersion && !SKIP_FIXERS) {
                 // Apply data fixer to block entity
@@ -141,17 +136,17 @@ public final class MapTemplateSerializer {
             }
 
             var pos = new BlockPos(
-                    blockEntity.getInt("x"),
-                    blockEntity.getInt("y"),
-                    blockEntity.getInt("z")
+                    blockEntity.getInt("x", 0),
+                    blockEntity.getInt("y", 0),
+                    blockEntity.getInt("z", 0)
             );
             template.blockEntities.put(pos.asLong(), blockEntity);
         }
 
-        template.bounds = BlockBounds.deserialize(root.getCompound("bounds"));
-        metadata.data = root.getCompound("data");
+        template.bounds = BlockBounds.deserialize(root.getCompound("bounds").orElse(null));
+        metadata.data = root.getCompound("data").orElse(null);
 
-        var biomeIdString = root.getString("biome");
+        var biomeIdString = root.getString("biome").orElse("");
         if (!Strings.isNullOrEmpty(biomeIdString)) {
             var biomeId = Identifier.tryParse(biomeIdString);
             if (biomeId != null) {
@@ -164,7 +159,7 @@ public final class MapTemplateSerializer {
         if (list == null) return;
 
         for (int i = 0; i < list.size(); i++) {
-            var nbt = list.getCompound(i);
+            var nbt = list.getCompoundOrEmpty(i);
 
             Dynamic<NbtElement> dynamic = new Dynamic<>(NbtOps.INSTANCE, nbt);
             list.set(i, fixer.update(type, dynamic, oldVersion, targetVersion).getValue());

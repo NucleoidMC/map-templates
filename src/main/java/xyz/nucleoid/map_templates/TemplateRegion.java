@@ -47,8 +47,8 @@ public final class TemplateRegion {
     }
 
     public static TemplateRegion deserialize(NbtCompound nbt) {
-        var marker = nbt.getString("marker");
-        var data = nbt.getCompound("data");
+        var marker = nbt.getString("marker").orElse("");
+        var data = nbt.getCompound("data").orElse(null);
         return new TemplateRegion(marker, BlockBounds.deserialize(nbt), data);
     }
 

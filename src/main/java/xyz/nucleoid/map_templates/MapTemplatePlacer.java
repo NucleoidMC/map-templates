@@ -63,7 +63,7 @@ public record MapTemplatePlacer(MapTemplate template) {
                 chunk.addPendingBlockEntityNbt(blockEntity);
             }
 
-            chunk.setBlockState(worldPos, state, false);
+            chunk.setBlockState(worldPos, state);
         }
     }
 
