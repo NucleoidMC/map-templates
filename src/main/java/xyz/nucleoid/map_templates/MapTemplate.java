@@ -11,8 +11,10 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.storage.NbtWriteView;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
+import net.minecraft.util.ErrorReporter;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -23,6 +25,8 @@ import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.stream.Stream;
 
@@ -34,6 +38,8 @@ import java.util.stream.Stream;
  * It can be loaded from resources with {@link MapTemplateSerializer#loadFromResource(MinecraftServer, Identifier)}.
  */
 public final class MapTemplate {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MapTemplate.class);
+
     private static final BlockState AIR = Blocks.AIR.getDefaultState();
 
     final Long2ObjectMap<MapChunk> chunks = new Long2ObjectOpenHashMap<>();
@@ -99,7 +105,12 @@ public final class MapTemplate {
 
     public void setBlockEntity(BlockPos pos, @Nullable BlockEntity entity, RegistryWrapper.WrapperLookup registryLookup) {
         if (entity != null) {
-            this.setBlockEntityNbt(pos, entity.createNbtWithId(registryLookup));
+            try (ErrorReporter.Logging errorReporter = new ErrorReporter.Logging(entity.getReporterContext(), LOGGER)) {
+                var view = NbtWriteView.create(errorReporter, registryLookup);
+                entity.writeDataWithId(view);
+
+                this.setBlockEntityNbt(pos, view.getNbt());
+            }
         } else {
             this.setBlockEntityNbt(pos, null);
         }
