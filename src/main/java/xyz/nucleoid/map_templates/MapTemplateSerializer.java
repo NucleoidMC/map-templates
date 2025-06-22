@@ -66,8 +66,8 @@ public final class MapTemplateSerializer {
         return root.getInt("data_version", 2586);
     }
 
-    private static int getSaveVersion() {
-        return SharedConstants.getGameVersion().getSaveVersion().getId();
+    private static int getCurrentDataVersion() {
+        return SharedConstants.getGameVersion().dataVersion().id();
     }
 
     private static void load(MapTemplate template, NbtCompound root, RegistryWrapper.WrapperLookup registryLookup) {
@@ -76,7 +76,7 @@ public final class MapTemplateSerializer {
 
     private static void load(MapTemplate template, NbtCompound root, RegistryWrapper.WrapperLookup registryLookup, DataFixer fixer) {
         int oldVersion = getDataVersion(root);
-        int targetVersion = getSaveVersion();
+        int targetVersion = getCurrentDataVersion();
 
         var chunkList = root.getListOrEmpty("chunks");
         for (int i = 0; i < chunkList.size(); i++) {
@@ -169,8 +169,8 @@ public final class MapTemplateSerializer {
     private static NbtCompound save(MapTemplate template, RegistryWrapper.WrapperLookup registryLookup) {
         var root = new NbtCompound();
 
-        int worldVersion = getSaveVersion();
-        root.putInt("data_version", worldVersion);
+        int dataVersion = getCurrentDataVersion();
+        root.putInt("data_version", dataVersion);
 
         var chunkList = new NbtList();
 

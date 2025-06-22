@@ -6,16 +6,22 @@ import net.minecraft.entity.SpawnReason;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtDouble;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.storage.NbtWriteView;
+import net.minecraft.util.ErrorReporter;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
 public record MapEntity(Vec3d position, NbtCompound nbt) {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MapEntity.class);
+
     public NbtCompound createEntityNbt(BlockPos origin) {
         var nbt = this.nbt.copy();
 
@@ -45,28 +51,31 @@ public record MapEntity(Vec3d position, NbtCompound nbt) {
 
     @Nullable
     public static MapEntity fromEntity(Entity entity, Vec3d position) {
-        var nbt = new NbtCompound();
-        if (!entity.saveNbt(nbt)) {
-            return null;
+        try (ErrorReporter.Logging errorReporter = new ErrorReporter.Logging(entity.getErrorReporterContext(), LOGGER)) {
+            var view = NbtWriteView.create(errorReporter, entity.getRegistryManager());
+
+            if (!entity.saveData(view)) {
+                return null;
+            }
+
+            // Avoid conflicts.
+            view.remove("UUID");
+
+            BlockPos minChunkPos = getMinChunkPosFor(position);
+            view.put("Pos", Vec3d.CODEC, position.subtract(minChunkPos.getX(), minChunkPos.getY(), minChunkPos.getZ()));
+
+            // AbstractDecorationEntity has special position handling with an attachment position.
+            view.getNbt().get("block_pos", BlockPos.CODEC).ifPresent(pos -> {
+                BlockPos localPos = pos
+                        .subtract(entity.getBlockPos())
+                        .add(MathHelper.floor(position.getX()), MathHelper.floor(position.getY()), MathHelper.floor(position.getZ()))
+                        .subtract(minChunkPos);
+
+                view.put("block_pos", BlockPos.CODEC, localPos);
+            });
+
+            return new MapEntity(position, view.getNbt());
         }
-
-        // Avoid conflicts.
-        nbt.remove("UUID");
-
-        BlockPos minChunkPos = getMinChunkPosFor(position);
-        nbt.put("Pos", posToList(position.subtract(minChunkPos.getX(), minChunkPos.getY(), minChunkPos.getZ())));
-
-        // AbstractDecorationEntity has special position handling with an attachment position.
-        nbt.get("block_pos", BlockPos.CODEC).ifPresent(pos -> {
-            BlockPos localPos = pos
-                    .subtract(entity.getBlockPos())
-                    .add(MathHelper.floor(position.getX()), MathHelper.floor(position.getY()), MathHelper.floor(position.getZ()))
-                    .subtract(minChunkPos);
-
-            nbt.put("block_pos", BlockPos.CODEC, localPos);
-        });
-
-        return new MapEntity(position, nbt);
     }
 
     public static MapEntity fromNbt(ChunkSectionPos sectionPos, NbtCompound nbt) {
