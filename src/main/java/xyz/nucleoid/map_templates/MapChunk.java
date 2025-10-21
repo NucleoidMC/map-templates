@@ -9,17 +9,21 @@ import net.minecraft.nbt.*;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.chunk.PaletteProvider;
 import net.minecraft.world.chunk.PalettedContainer;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class MapChunk {
-    private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer.createPalettedContainerCodec(Block.STATE_IDS, BlockState.CODEC, PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
+    private static final BlockState DEFAULT_BLOCK = Blocks.AIR.getDefaultState();
+    private static final PaletteProvider<BlockState> PALETTE_PROVIDER = PaletteProvider.forBlockStates(Block.STATE_IDS);
+
+    private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer.createPalettedContainerCodec(BlockState.CODEC, PALETTE_PROVIDER, DEFAULT_BLOCK);
 
     private final ChunkSectionPos pos;
 
-    private PalettedContainer<BlockState> container = new PalettedContainer<>(Block.STATE_IDS, Blocks.AIR.getDefaultState(), PalettedContainer.PaletteProvider.BLOCK_STATE);
+    private PalettedContainer<BlockState> container = new PalettedContainer<>(DEFAULT_BLOCK, PALETTE_PROVIDER);
     private final List<MapEntity> entities = new ArrayList<>();
 
     MapChunk(ChunkSectionPos pos) {
