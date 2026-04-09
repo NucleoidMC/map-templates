@@ -168,7 +168,7 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
 
         for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
             for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-                chunks.add(ChunkPos.asLong(chunkX, chunkZ));
+                chunks.add(ChunkPos.pack(chunkX, chunkZ));
             }
         }
 

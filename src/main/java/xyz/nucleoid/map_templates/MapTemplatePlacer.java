@@ -54,7 +54,7 @@ public record MapTemplatePlacer(MapTemplate template) {
             int chunkX = worldPos.getX() >> 4;
             int chunkZ = worldPos.getZ() >> 4;
 
-            long chunkPos = ChunkPos.asLong(chunkX, chunkZ);
+            long chunkPos = ChunkPos.pack(chunkX, chunkZ);
             var chunk = chunkCache.get(chunkPos);
 
             var blockEntity = template.getBlockEntityNbt(templatePos, worldPos);
