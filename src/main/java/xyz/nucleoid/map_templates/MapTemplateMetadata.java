@@ -1,22 +1,22 @@
 package xyz.nucleoid.map_templates;
 
-import net.minecraft.nbt.NbtCompound;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
+import net.minecraft.nbt.CompoundTag;
 
 /**
  * Represents the non-world data of a MapTemplate that can be used to control additional game logic, but has no impact
  * in what blocks or entities are placed in the world.
  *
- * This includes {@link TemplateRegion} and arbitrary {@link NbtCompound} attached data
+ * This includes {@link TemplateRegion} and arbitrary {@link CompoundTag} attached data
  */
 public final class MapTemplateMetadata {
     final List<TemplateRegion> regions = new ArrayList<>();
-    NbtCompound data = new NbtCompound();
+    CompoundTag data = new CompoundTag();
 
     /**
      * Adds a region with the given marker tag and bounds.
@@ -27,11 +27,11 @@ public final class MapTemplateMetadata {
      * @return the added region
      */
     public TemplateRegion addRegion(String marker, BlockBounds bounds) {
-        return this.addRegion(marker, bounds, new NbtCompound());
+        return this.addRegion(marker, bounds, new CompoundTag());
     }
 
     /**
-     * Adds a region with the given marker tag, bounds, and {@link NbtCompound} attached data.
+     * Adds a region with the given marker tag, bounds, and {@link CompoundTag} attached data.
      * Note that markers are not unique: multiple regions can be assigned the same marker!
      *
      * @param marker the marker tag to index this region by
@@ -39,7 +39,7 @@ public final class MapTemplateMetadata {
      * @param nbt arbitrary attached data
      * @return the added region
      */
-    public TemplateRegion addRegion(String marker, BlockBounds bounds, NbtCompound nbt) {
+    public TemplateRegion addRegion(String marker, BlockBounds bounds, CompoundTag nbt) {
         TemplateRegion region = new TemplateRegion(marker, bounds, nbt);
         this.regions.add(region);
         return region;
@@ -104,7 +104,7 @@ public final class MapTemplateMetadata {
      *
      * @param data the data as an NBT compound
      */
-    public void setData(NbtCompound data) {
+    public void setData(CompoundTag data) {
         this.data = data;
     }
 
@@ -113,7 +113,7 @@ public final class MapTemplateMetadata {
      *
      * @return the data as an NBT compound
      */
-    public NbtCompound getData() {
+    public CompoundTag getData() {
         return this.data;
     }
 }
