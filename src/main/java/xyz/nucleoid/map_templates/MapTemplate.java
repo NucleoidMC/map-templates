@@ -3,26 +3,26 @@ package xyz.nucleoid.map_templates;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.SectionPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.storage.NbtWriteView;
-import net.minecraft.util.BlockMirror;
-import net.minecraft.util.BlockRotation;
-import net.minecraft.util.ErrorReporter;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.Heightmap;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.BiomeKeys;
+import net.minecraft.util.Mth;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -40,12 +40,12 @@ import java.util.stream.Stream;
 public final class MapTemplate {
     private static final Logger LOGGER = LoggerFactory.getLogger(MapTemplate.class);
 
-    private static final BlockState AIR = Blocks.AIR.getDefaultState();
+    private static final BlockState AIR = Blocks.AIR.defaultBlockState();
 
     final Long2ObjectMap<MapChunk> chunks = new Long2ObjectOpenHashMap<>();
-    final Long2ObjectMap<NbtCompound> blockEntities = new Long2ObjectOpenHashMap<>();
+    final Long2ObjectMap<CompoundTag> blockEntities = new Long2ObjectOpenHashMap<>();
 
-    RegistryKey<Biome> biome = BiomeKeys.THE_VOID;
+    ResourceKey<Biome> biome = Biomes.THE_VOID;
 
     BlockBounds bounds = null;
     BlockBounds generatedBounds = null;
@@ -64,7 +64,7 @@ public final class MapTemplate {
      *
      * @param biome The biome key.
      */
-    public void setBiome(RegistryKey<Biome> biome) {
+    public void setBiome(ResourceKey<Biome> biome) {
         this.biome = biome;
     }
 
@@ -73,7 +73,7 @@ public final class MapTemplate {
      *
      * @return The biome key.
      */
-    public RegistryKey<Biome> getBiome() {
+    public ResourceKey<Biome> getBiome() {
         return this.biome;
     }
 
@@ -94,7 +94,7 @@ public final class MapTemplate {
         this.generatedBounds = null;
 
         if (state.hasBlockEntity()) {
-            var nbt = new NbtCompound();
+            var nbt = new CompoundTag();
             nbt.putString("id", "DUMMY");
             nbt.putInt("x", pos.getX());
             nbt.putInt("y", pos.getY());
@@ -103,20 +103,20 @@ public final class MapTemplate {
         }
     }
 
-    public void setBlockEntity(BlockPos pos, @Nullable BlockEntity entity, RegistryWrapper.WrapperLookup registryLookup) {
+    public void setBlockEntity(BlockPos pos, @Nullable BlockEntity entity, HolderLookup.Provider registryLookup) {
         if (entity != null) {
-            try (ErrorReporter.Logging errorReporter = new ErrorReporter.Logging(entity.getReporterContext(), LOGGER)) {
-                var view = NbtWriteView.create(errorReporter, registryLookup);
-                entity.writeDataWithId(view);
+            try (ProblemReporter.ScopedCollector errorReporter = new ProblemReporter.ScopedCollector(entity.problemPath(), LOGGER)) {
+                var view = TagValueOutput.createWithContext(errorReporter, registryLookup);
+                entity.saveWithId(view);
 
-                this.setBlockEntityNbt(pos, view.getNbt());
+                this.setBlockEntityNbt(pos, view.buildResult());
             }
         } else {
             this.setBlockEntityNbt(pos, null);
         }
     }
 
-    public void setBlockEntityNbt(BlockPos pos, @Nullable NbtCompound entityNbt) {
+    public void setBlockEntityNbt(BlockPos pos, @Nullable CompoundTag entityNbt) {
         if (entityNbt != null) {
             entityNbt.putInt("x", pos.getX());
             entityNbt.putInt("y", pos.getY());
@@ -137,13 +137,13 @@ public final class MapTemplate {
     }
 
     @Nullable
-    public NbtCompound getBlockEntityNbt(BlockPos localPos) {
+    public CompoundTag getBlockEntityNbt(BlockPos localPos) {
         var nbt = this.blockEntities.get(localPos.asLong());
         return nbt != null ? nbt.copy() : null;
     }
 
     @Nullable
-    public NbtCompound getBlockEntityNbt(BlockPos localPos, BlockPos worldPos) {
+    public CompoundTag getBlockEntityNbt(BlockPos localPos, BlockPos worldPos) {
         var nbt = this.getBlockEntityNbt(localPos);
         if (nbt != null) {
             nbt.putInt("x", worldPos.getX());
@@ -162,7 +162,7 @@ public final class MapTemplate {
      * @param entity The entity to add.
      * @param pos The entity position relatives to the map.
      */
-    public void addEntity(Entity entity, Vec3d pos) {
+    public void addEntity(Entity entity, Vec3 pos) {
         this.getOrCreateChunk(chunkPos(pos)).addEntity(entity, pos);
     }
 
@@ -184,14 +184,14 @@ public final class MapTemplate {
     }
 
     // TODO: store / lookup more efficiently?
-    public int getTopY(int x, int z, Heightmap.Type heightmap) {
-        var predicate = heightmap.getBlockPredicate();
+    public int getTopY(int x, int z, Heightmap.Types heightmap) {
+        var predicate = heightmap.isOpaque();
 
         var bounds = this.getBounds();
         int minY = bounds.min().getY();
         int maxY = bounds.max().getY();
 
-        var mutablePos = new BlockPos.Mutable(x, 0, z);
+        var mutablePos = new BlockPos.MutableBlockPos(x, 0, z);
         for (int y = maxY; y >= minY; y--) {
             mutablePos.setY(y);
 
@@ -204,7 +204,7 @@ public final class MapTemplate {
         return 0;
     }
 
-    public BlockPos getTopPos(int x, int z, Heightmap.Type heightmap) {
+    public BlockPos getTopPos(int x, int z, Heightmap.Types heightmap) {
         int y = this.getTopY(x, z, heightmap);
         return new BlockPos(x, y, z);
     }
@@ -217,7 +217,7 @@ public final class MapTemplate {
     public MapChunk getOrCreateChunk(long pos) {
         var chunk = this.chunks.get(pos);
         if (chunk == null) {
-            this.chunks.put(pos, chunk = new MapChunk(ChunkSectionPos.from(pos)));
+            this.chunks.put(pos, chunk = new MapChunk(SectionPos.of(pos)));
         }
         return chunk;
     }
@@ -262,9 +262,9 @@ public final class MapTemplate {
 
         for (var entry : Long2ObjectMaps.fastIterable(this.chunks)) {
             long chunkPos = entry.getLongKey();
-            int chunkX = ChunkSectionPos.unpackX(chunkPos);
-            int chunkY = ChunkSectionPos.unpackY(chunkPos);
-            int chunkZ = ChunkSectionPos.unpackZ(chunkPos);
+            int chunkX = SectionPos.x(chunkPos);
+            int chunkY = SectionPos.y(chunkPos);
+            int chunkZ = SectionPos.z(chunkPos);
 
             if (chunkX < minChunkX) minChunkX = chunkX;
             if (chunkY < minChunkY) minChunkY = chunkY;
@@ -285,41 +285,41 @@ public final class MapTemplate {
         return chunkPos(pos.getX() >> 4, pos.getY() >> 4, pos.getZ() >> 4);
     }
 
-    static long chunkPos(Vec3d pos) {
-        return chunkPos(MathHelper.floor(pos.getX()) >> 4, MathHelper.floor(pos.getY()) >> 4, MathHelper.floor(pos.getZ()) >> 4);
+    static long chunkPos(Vec3 pos) {
+        return chunkPos(Mth.floor(pos.x()) >> 4, Mth.floor(pos.y()) >> 4, Mth.floor(pos.z()) >> 4);
     }
 
     static long chunkPos(int x, int y, int z) {
-        return ChunkSectionPos.asLong(x, y, z);
+        return SectionPos.asLong(x, y, z);
     }
 
     public MapTemplate translated(int x, int y, int z) {
         return this.transformed(MapTransform.translation(x, y, z));
     }
 
-    public MapTemplate rotateAround(BlockPos pivot, BlockRotation rotation, BlockMirror mirror) {
+    public MapTemplate rotateAround(BlockPos pivot, Rotation rotation, Mirror mirror) {
         return this.transformed(MapTransform.rotationAround(pivot, rotation, mirror));
     }
 
-    public MapTemplate rotate(BlockRotation rotation, BlockMirror mirror) {
-        return this.rotateAround(BlockPos.ORIGIN, rotation, mirror);
+    public MapTemplate rotate(Rotation rotation, Mirror mirror) {
+        return this.rotateAround(BlockPos.ZERO, rotation, mirror);
     }
 
-    public MapTemplate rotate(BlockRotation rotation) {
-        return this.rotate(rotation, BlockMirror.NONE);
+    public MapTemplate rotate(Rotation rotation) {
+        return this.rotate(rotation, Mirror.NONE);
     }
 
-    public MapTemplate mirror(BlockMirror mirror) {
-        return this.rotate(BlockRotation.NONE, mirror);
+    public MapTemplate mirror(Mirror mirror) {
+        return this.rotate(Rotation.NONE, mirror);
     }
 
     public MapTemplate transformed(MapTransform transform) {
         var result = MapTemplate.createEmpty();
 
-        var mutablePos = new BlockPos.Mutable();
+        var mutablePos = new BlockPos.MutableBlockPos();
 
         for (MapChunk chunk : this.chunks.values()) {
-            var minChunkPos = chunk.getPos().getMinPos();
+            var minChunkPos = chunk.getPos().origin();
 
             for (int chunkZ = 0; chunkZ < 16; chunkZ++) {
                 for (int chunkY = 0; chunkY < 16; chunkY++) {
@@ -328,7 +328,7 @@ public final class MapTemplate {
                         if (!state.isAir()) {
                             state = transform.transformedBlock(state);
 
-                            mutablePos.set(minChunkPos, chunkX, chunkY, chunkZ);
+                            mutablePos.setWithOffset(minChunkPos, chunkX, chunkY, chunkZ);
                             result.setBlockState(transform.transformPoint(mutablePos), state);
                         }
                     }
@@ -404,7 +404,7 @@ public final class MapTemplate {
             }
         }
 
-        other.metadata.data.copyFrom(this.metadata.data);
+        other.metadata.data.merge(this.metadata.data);
 
         for (var region : this.metadata.regions) {
             other.metadata.addRegion(region.copy());

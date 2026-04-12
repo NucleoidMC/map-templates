@@ -5,20 +5,20 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.random.Random;
-import net.minecraft.world.HeightLimitView;
-import net.minecraft.world.chunk.Chunk;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Represents an axis-aligned-bounding-box aligned to the block grid.
@@ -33,9 +33,9 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
             ).apply(instance, BlockBounds::new)
     );
 
-    public static final PacketCodec<ByteBuf, BlockBounds> PACKET_CODEC = PacketCodec.tuple(
-            BlockPos.PACKET_CODEC, BlockBounds::min,
-            BlockPos.PACKET_CODEC, BlockBounds::max,
+    public static final StreamCodec<ByteBuf, BlockBounds> PACKET_CODEC = StreamCodec.composite(
+            BlockPos.STREAM_CODEC, BlockBounds::min,
+            BlockPos.STREAM_CODEC, BlockBounds::max,
             BlockBounds::of
     );
 
@@ -63,28 +63,28 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
         return new BlockBounds(pos, pos);
     }
 
-    public static BlockBounds ofChunk(Chunk chunk) {
+    public static BlockBounds ofChunk(ChunkAccess chunk) {
         return ofChunk(chunk.getPos(), chunk);
     }
 
-    public static BlockBounds ofChunk(ChunkPos chunk, HeightLimitView world) {
+    public static BlockBounds ofChunk(ChunkPos chunk, LevelHeightAccessor world) {
         return new BlockBounds(
-                new BlockPos(chunk.getStartX(), world.getBottomY(), chunk.getStartZ()),
-                new BlockPos(chunk.getEndX(), world.getTopYInclusive(), chunk.getEndZ())
+                new BlockPos(chunk.getMinBlockX(), world.getMinY(), chunk.getMinBlockZ()),
+                new BlockPos(chunk.getMaxBlockX(), world.getMaxY(), chunk.getMaxBlockZ())
         );
     }
 
     public BlockBounds offset(BlockPos pos) {
         return new BlockBounds(
-                this.min.add(pos),
-                this.max.add(pos)
+                this.min.offset(pos),
+                this.max.offset(pos)
         );
     }
 
     public BlockBounds offset(int x, int y, int z) {
         return new BlockBounds(
-                this.min.add(x, y, z),
-                this.max.add(x, y, z)
+                this.min.offset(x, y, z),
+                this.max.offset(x, y, z)
         );
     }
 
@@ -129,24 +129,24 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
         return this.max.subtract(this.min);
     }
 
-    public Vec3d center() {
-        return new Vec3d(
+    public Vec3 center() {
+        return new Vec3(
                 (this.min.getX() + this.max.getX() + 1) / 2.0,
                 (this.min.getY() + this.max.getY() + 1) / 2.0,
                 (this.min.getZ() + this.max.getZ() + 1) / 2.0
         );
     }
 
-    public Vec3d centerBottom() {
-        return new Vec3d(
+    public Vec3 centerBottom() {
+        return new Vec3(
                 (this.min.getX() + this.max.getX() + 1) / 2.0,
                 this.min.getY(),
                 (this.min.getZ() + this.max.getZ() + 1) / 2.0
         );
     }
 
-    public Vec3d centerTop() {
-        return new Vec3d(
+    public Vec3 centerTop() {
+        return new Vec3(
                 (this.min.getX() + this.max.getX() + 1) / 2.0,
                 this.max.getY() + 1.0,
                 (this.min.getZ() + this.max.getZ() + 1) / 2.0
@@ -155,7 +155,7 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
 
     @Override
     public Iterator<BlockPos> iterator() {
-        return BlockPos.iterate(this.min, this.max).iterator();
+        return BlockPos.betweenClosed(this.min, this.max).iterator();
     }
 
     public LongSet asChunks() {
@@ -168,7 +168,7 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
 
         for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
             for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-                chunks.add(ChunkPos.toLong(chunkX, chunkZ));
+                chunks.add(ChunkPos.pack(chunkX, chunkZ));
             }
         }
 
@@ -188,7 +188,7 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
         for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
             for (int chunkY = minChunkY; chunkY <= maxChunkY; chunkY++) {
                 for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-                    chunks.add(ChunkSectionPos.asLong(chunkX, chunkY, chunkZ));
+                    chunks.add(SectionPos.asLong(chunkX, chunkY, chunkZ));
                 }
             }
         }
@@ -196,28 +196,28 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
         return chunks;
     }
 
-    public BlockPos sampleBlock(Random random) {
+    public BlockPos sampleBlock(RandomSource random) {
         return new BlockPos(
-                random.nextBetween(this.min.getX(), this.max.getX()),
-                random.nextBetween(this.min.getY(), this.max.getY()),
-                random.nextBetween(this.min.getZ(), this.max.getZ())
+                random.nextIntBetweenInclusive(this.min.getX(), this.max.getX()),
+                random.nextIntBetweenInclusive(this.min.getY(), this.max.getY()),
+                random.nextIntBetweenInclusive(this.min.getZ(), this.max.getZ())
         );
     }
 
-    public Box asBox() {
-        return new Box(
+    public AABB asBox() {
+        return new AABB(
                 this.min.getX(), this.min.getY(), this.min.getZ(),
                 this.max.getX() + 1.0, this.max.getY() + 1.0, this.max.getZ() + 1.0
         );
     }
 
-    public NbtCompound serialize(NbtCompound root) {
+    public CompoundTag serialize(CompoundTag root) {
         root.putIntArray("min", new int[]{this.min.getX(), this.min.getY(), this.min.getZ()});
         root.putIntArray("max", new int[]{this.max.getX(), this.max.getY(), this.max.getZ()});
         return root;
     }
 
-    public static BlockBounds deserialize(NbtCompound root) {
+    public static BlockBounds deserialize(CompoundTag root) {
         var minArray = root.getIntArray("min").orElseThrow();
         var maxArray = root.getIntArray("max").orElseThrow();
         return new BlockBounds(

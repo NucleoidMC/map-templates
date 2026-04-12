@@ -1,32 +1,31 @@
 package xyz.nucleoid.map_templates;
 
 import com.mojang.serialization.Codec;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.Entity;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.*;
-import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.chunk.PaletteProvider;
-import net.minecraft.world.chunk.PalettedContainer;
-
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.PalettedContainer;
+import net.minecraft.world.level.chunk.Strategy;
+import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class MapChunk {
-    private static final BlockState DEFAULT_BLOCK = Blocks.AIR.getDefaultState();
-    private static final PaletteProvider<BlockState> PALETTE_PROVIDER = PaletteProvider.forBlockStates(Block.STATE_IDS);
+    private static final BlockState DEFAULT_BLOCK = Blocks.AIR.defaultBlockState();
+    private static final Strategy<BlockState> PALETTE_PROVIDER = Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY);
 
-    private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer.createPalettedContainerCodec(BlockState.CODEC, PALETTE_PROVIDER, DEFAULT_BLOCK);
+    private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer.codecRW(BlockState.CODEC, PALETTE_PROVIDER, DEFAULT_BLOCK);
 
-    private final ChunkSectionPos pos;
+    private final SectionPos pos;
 
     private PalettedContainer<BlockState> container = new PalettedContainer<>(DEFAULT_BLOCK, PALETTE_PROVIDER);
     private final List<MapEntity> entities = new ArrayList<>();
 
-    MapChunk(ChunkSectionPos pos) {
+    MapChunk(SectionPos pos) {
         this.pos = pos;
     }
 
@@ -46,7 +45,7 @@ public final class MapChunk {
      * @param entity The entity to add.
      * @param position The entity position relative to the map.
      */
-    public void addEntity(Entity entity, Vec3d position) {
+    public void addEntity(Entity entity, Vec3 position) {
         var mapEntity = MapEntity.fromEntity(entity, position);
         if (mapEntity != null) {
             this.entities.add(mapEntity);
@@ -57,7 +56,7 @@ public final class MapChunk {
         this.entities.add(entity);
     }
 
-    public ChunkSectionPos getPos() {
+    public SectionPos getPos() {
         return this.pos;
     }
 
@@ -70,11 +69,11 @@ public final class MapChunk {
         return this.entities;
     }
 
-    public void serialize(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+    public void serialize(CompoundTag nbt, HolderLookup.Provider registryLookup) {
         nbt.put("block_states", BLOCK_CODEC.encodeStart(NbtOps.INSTANCE, this.container).getOrThrow());
 
         if (!this.entities.isEmpty()) {
-            var entitiesNbt = new NbtList();
+            var entitiesNbt = new ListTag();
             for (var entity : this.entities) {
                 entitiesNbt.add(entity.nbt());
             }
@@ -82,9 +81,9 @@ public final class MapChunk {
         }
     }
 
-    public static MapChunk deserialize(ChunkSectionPos pos, NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
+    public static MapChunk deserialize(SectionPos pos, CompoundTag nbt, HolderLookup.Provider registryLookup) {
         var chunk = new MapChunk(pos);
-        var container = nbt.get("block_states", BLOCK_CODEC);
+        var container = nbt.read("block_states", BLOCK_CODEC);
 
         if (container.isPresent()) {
             chunk.container = container.get();
@@ -92,7 +91,7 @@ public final class MapChunk {
 
         var entitiesNbt = nbt.getListOrEmpty("entities");
         for (var item : entitiesNbt) {
-            if (item instanceof NbtCompound entityNbt) {
+            if (item instanceof CompoundTag entityNbt) {
                 chunk.entities.add(MapEntity.fromNbt(pos, entityNbt));
             }
         }

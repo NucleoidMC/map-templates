@@ -2,31 +2,30 @@ package xyz.nucleoid.map_templates;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import net.minecraft.block.BlockState;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.LightType;
-import net.minecraft.world.chunk.WorldChunk;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 
 public record MapTemplatePlacer(MapTemplate template) {
-    public void placeAt(ServerWorld world, BlockPos origin) {
+    public void placeAt(ServerLevel world, BlockPos origin) {
         var chunkCache = this.collectChunks(world, origin, this.template.bounds);
 
         this.placeBlocks(origin, chunkCache);
         this.placeEntities(world, origin);
     }
 
-    private Long2ObjectMap<WorldChunk> collectChunks(ServerWorld world, BlockPos origin, BlockBounds bounds) {
+    private Long2ObjectMap<LevelChunk> collectChunks(ServerLevel world, BlockPos origin, BlockBounds bounds) {
         var chunkPositions = bounds.offset(origin).asChunks();
         var chunkIterator = chunkPositions.iterator();
 
-        var chunks = new Long2ObjectOpenHashMap<WorldChunk>(chunkPositions.size());
+        var chunks = new Long2ObjectOpenHashMap<LevelChunk>(chunkPositions.size());
         while (chunkIterator.hasNext()) {
             long chunkPos = chunkIterator.nextLong();
-            int chunkX = ChunkPos.getPackedX(chunkPos);
-            int chunkZ = ChunkPos.getPackedZ(chunkPos);
+            int chunkX = ChunkPos.getX(chunkPos);
+            int chunkZ = ChunkPos.getZ(chunkPos);
 
             chunks.put(chunkPos, world.getChunk(chunkX, chunkZ));
         }
@@ -34,18 +33,18 @@ public record MapTemplatePlacer(MapTemplate template) {
         return chunks;
     }
 
-    private void placeBlocks(BlockPos origin, Long2ObjectMap<WorldChunk> chunkCache) {
+    private void placeBlocks(BlockPos origin, Long2ObjectMap<LevelChunk> chunkCache) {
         var template = this.template;
         var bounds = template.getBounds();
 
-        var worldPos = new BlockPos.Mutable();
+        var worldPos = new BlockPos.MutableBlockPos();
 
         int originX = origin.getX();
         int originY = origin.getY();
         int originZ = origin.getZ();
 
         for (var templatePos : bounds) {
-            worldPos.set(templatePos, originX, originY, originZ);
+            worldPos.setWithOffset(templatePos, originX, originY, originZ);
 
             BlockState state = template.getBlockState(templatePos);
             if (state.isAir()) {
@@ -55,19 +54,19 @@ public record MapTemplatePlacer(MapTemplate template) {
             int chunkX = worldPos.getX() >> 4;
             int chunkZ = worldPos.getZ() >> 4;
 
-            long chunkPos = ChunkPos.toLong(chunkX, chunkZ);
+            long chunkPos = ChunkPos.pack(chunkX, chunkZ);
             var chunk = chunkCache.get(chunkPos);
 
             var blockEntity = template.getBlockEntityNbt(templatePos, worldPos);
             if (blockEntity != null) {
-                chunk.addPendingBlockEntityNbt(blockEntity);
+                chunk.setBlockEntityNbt(blockEntity);
             }
 
             chunk.setBlockState(worldPos, state);
         }
     }
 
-    private void placeEntities(ServerWorld world, BlockPos origin) {
+    private void placeEntities(ServerLevel world, BlockPos origin) {
         var template = this.template;
 
         var chunks = template.getBounds().asChunkSections();
@@ -75,13 +74,13 @@ public record MapTemplatePlacer(MapTemplate template) {
 
         while (chunkIterator.hasNext()) {
             long chunkPos = chunkIterator.nextLong();
-            int chunkX = ChunkSectionPos.unpackX(chunkPos);
-            int chunkY = ChunkSectionPos.unpackY(chunkPos);
-            int chunkZ = ChunkSectionPos.unpackZ(chunkPos);
+            int chunkX = SectionPos.x(chunkPos);
+            int chunkY = SectionPos.y(chunkPos);
+            int chunkZ = SectionPos.z(chunkPos);
 
             var entities = template.getEntitiesInChunk(chunkX, chunkY, chunkZ);
             entities.forEach(mapEntity ->
-                    mapEntity.createEntities(world, origin, world::spawnEntity)
+                    mapEntity.createEntities(world, origin, world::addFreshEntity)
             );
         }
     }

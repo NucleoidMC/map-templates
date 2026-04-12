@@ -1,86 +1,86 @@
 package xyz.nucleoid.map_templates;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.SpawnReason;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtDouble;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.storage.NbtWriteView;
-import net.minecraft.util.ErrorReporter;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.util.Mth;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.phys.Vec3;
 
-public record MapEntity(Vec3d position, NbtCompound nbt) {
+public record MapEntity(Vec3 position, CompoundTag nbt) {
     private static final Logger LOGGER = LoggerFactory.getLogger(MapEntity.class);
 
-    public NbtCompound createEntityNbt(BlockPos origin) {
+    public CompoundTag createEntityNbt(BlockPos origin) {
         var nbt = this.nbt.copy();
 
-        var chunkLocalPos = this.nbt.get("Pos", Vec3d.CODEC).orElseThrow();
+        var chunkLocalPos = this.nbt.read("Pos", Vec3.CODEC).orElseThrow();
 
         var worldPosition = this.position.add(origin.getX(), origin.getY(), origin.getZ());
         nbt.put("Pos", posToList(worldPosition));
 
-        nbt.get("block_pos", BlockPos.CODEC).ifPresent(pos -> {
+        nbt.read("block_pos", BlockPos.CODEC).ifPresent(pos -> {
             double x = pos.getX() - worldPosition.x + chunkLocalPos.x;
             double y = pos.getY() - worldPosition.y + chunkLocalPos.y;
             double z = pos.getZ() - worldPosition.z + chunkLocalPos.z;
 
-            nbt.put("block_pos", BlockPos.CODEC, BlockPos.ofFloored(x, y, z));
+            nbt.store("block_pos", BlockPos.CODEC, BlockPos.containing(x, y, z));
         });
 
         return nbt;
     }
 
-    public void createEntities(World world, BlockPos origin, Consumer<Entity> consumer) {
+    public void createEntities(Level world, BlockPos origin, Consumer<Entity> consumer) {
         var nbt = this.createEntityNbt(origin);
-        EntityType.loadEntityWithPassengers(nbt, world, SpawnReason.STRUCTURE, entity -> {
+        EntityType.loadEntityRecursive(nbt, world, EntitySpawnReason.STRUCTURE, entity -> {
             consumer.accept(entity);
             return entity;
         });
     }
 
     @Nullable
-    public static MapEntity fromEntity(Entity entity, Vec3d position) {
-        try (ErrorReporter.Logging errorReporter = new ErrorReporter.Logging(entity.getErrorReporterContext(), LOGGER)) {
-            var view = NbtWriteView.create(errorReporter, entity.getRegistryManager());
+    public static MapEntity fromEntity(Entity entity, Vec3 position) {
+        try (ProblemReporter.ScopedCollector errorReporter = new ProblemReporter.ScopedCollector(entity.problemPath(), LOGGER)) {
+            var view = TagValueOutput.createWithContext(errorReporter, entity.registryAccess());
 
-            if (!entity.saveData(view)) {
+            if (!entity.save(view)) {
                 return null;
             }
 
             // Avoid conflicts.
-            view.remove("UUID");
+            view.discard("UUID");
 
             BlockPos minChunkPos = getMinChunkPosFor(position);
-            view.put("Pos", Vec3d.CODEC, position.subtract(minChunkPos.getX(), minChunkPos.getY(), minChunkPos.getZ()));
+            view.store("Pos", Vec3.CODEC, position.subtract(minChunkPos.getX(), minChunkPos.getY(), minChunkPos.getZ()));
 
             // AbstractDecorationEntity has special position handling with an attachment position.
-            view.getNbt().get("block_pos", BlockPos.CODEC).ifPresent(pos -> {
+            view.buildResult().read("block_pos", BlockPos.CODEC).ifPresent(pos -> {
                 BlockPos localPos = pos
-                        .subtract(entity.getBlockPos())
-                        .add(MathHelper.floor(position.getX()), MathHelper.floor(position.getY()), MathHelper.floor(position.getZ()))
+                        .subtract(entity.blockPosition())
+                        .offset(Mth.floor(position.x()), Mth.floor(position.y()), Mth.floor(position.z()))
                         .subtract(minChunkPos);
 
-                view.put("block_pos", BlockPos.CODEC, localPos);
+                view.store("block_pos", BlockPos.CODEC, localPos);
             });
 
-            return new MapEntity(position, view.getNbt());
+            return new MapEntity(position, view.buildResult());
         }
     }
 
-    public static MapEntity fromNbt(ChunkSectionPos sectionPos, NbtCompound nbt) {
-        Vec3d localPos = nbt.get("Pos", Vec3d.CODEC).orElseThrow();
-        Vec3d globalPos = localPos.add(sectionPos.getMinX(), sectionPos.getMinY(), sectionPos.getMinZ());
+    public static MapEntity fromNbt(SectionPos sectionPos, CompoundTag nbt) {
+        Vec3 localPos = nbt.read("Pos", Vec3.CODEC).orElseThrow();
+        Vec3 globalPos = localPos.add(sectionPos.minBlockX(), sectionPos.minBlockY(), sectionPos.minBlockZ());
 
         return new MapEntity(globalPos, nbt);
     }
@@ -95,31 +95,31 @@ public record MapEntity(Vec3d position, NbtCompound nbt) {
         resultNbt.put("Pos", posToList(resultPosition.subtract(minResultChunkPos.getX(), minResultChunkPos.getY(), minResultChunkPos.getZ())));
 
         // AbstractDecorationEntity has special position handling with an attachment position.
-        resultNbt.get("block_pos", BlockPos.CODEC).ifPresent(pos -> {
-            var attachedPos = pos.add(minChunkPos);
+        resultNbt.read("block_pos", BlockPos.CODEC).ifPresent(pos -> {
+            var attachedPos = pos.offset(minChunkPos);
 
             var localAttachedPos = transform.transformedPoint(attachedPos)
                     .subtract(minResultChunkPos);
 
-            resultNbt.put("block_pos", BlockPos.CODEC, localAttachedPos);
+            resultNbt.store("block_pos", BlockPos.CODEC, localAttachedPos);
         });
 
         return new MapEntity(resultPosition, resultNbt);
     }
 
-    private static BlockPos getMinChunkPosFor(Vec3d position) {
+    private static BlockPos getMinChunkPosFor(Vec3 position) {
         return new BlockPos(
-                MathHelper.floor(position.getX()) & ~15,
-                MathHelper.floor(position.getY()) & ~15,
-                MathHelper.floor(position.getZ()) & ~15
+                Mth.floor(position.x()) & ~15,
+                Mth.floor(position.y()) & ~15,
+                Mth.floor(position.z()) & ~15
         );
     }
 
-    private static NbtList posToList(Vec3d pos) {
-        var list = new NbtList();
-        list.add(NbtDouble.of(pos.x));
-        list.add(NbtDouble.of(pos.y));
-        list.add(NbtDouble.of(pos.z));
+    private static ListTag posToList(Vec3 pos) {
+        var list = new ListTag();
+        list.add(DoubleTag.valueOf(pos.x));
+        list.add(DoubleTag.valueOf(pos.y));
+        list.add(DoubleTag.valueOf(pos.z));
         return list;
     }
 }
