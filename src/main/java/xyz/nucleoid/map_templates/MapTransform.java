@@ -43,7 +43,7 @@ public interface MapTransform {
 
             @Override
             public BlockState transformedBlock(BlockState state) {
-                return state.rotate(rotation).mirror(mirror);
+                return state.mirror(mirror).rotate(rotation);
             }
         };
     }
