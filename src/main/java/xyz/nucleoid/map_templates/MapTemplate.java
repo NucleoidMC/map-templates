@@ -412,5 +412,8 @@ public final class MapTemplate {
 
         other.bounds = this.getBounds().union(other.getBounds());
         other.biome = this.biome;
+
+        // Merge block entities
+        blockEntities.forEach(other.blockEntities::putIfAbsent);
     }
 }
