@@ -92,15 +92,6 @@ public final class MapTemplate {
         chunk.set(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15, state);
 
         this.generatedBounds = null;
-
-        if (state.hasBlockEntity()) {
-            var nbt = new CompoundTag();
-            nbt.putString("id", "DUMMY");
-            nbt.putInt("x", pos.getX());
-            nbt.putInt("y", pos.getY());
-            nbt.putInt("z", pos.getZ());
-            this.blockEntities.put(pos.asLong(), nbt);
-        }
     }
 
     public void setBlockEntity(BlockPos pos, @Nullable BlockEntity entity, HolderLookup.Provider registryLookup) {
