@@ -1,5 +1,6 @@
 package xyz.nucleoid.map_templates;
 
+import net.minecraft.world.entity.EntitySpawnRequest;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ public record MapEntity(Vec3 position, CompoundTag nbt) {
 
     public void createEntities(Level world, BlockPos origin, Consumer<Entity> consumer) {
         var nbt = this.createEntityNbt(origin);
-        EntityType.loadEntityRecursive(nbt, world, EntitySpawnReason.STRUCTURE, entity -> {
+        EntityType.loadEntityRecursive(nbt, world, new EntitySpawnRequest(EntitySpawnReason.STRUCTURE, true), entity -> {
             consumer.accept(entity);
             return entity;
         });
