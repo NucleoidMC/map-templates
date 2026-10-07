@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 import net.minecraft.nbt.CompoundTag;
 
@@ -115,5 +116,19 @@ public final class MapTemplateMetadata {
      */
     public CompoundTag getData() {
         return this.data;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof MapTemplateMetadata that)) return false;
+
+        return regions.equals(that.regions) && Objects.equals(data, that.data);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = regions.hashCode();
+        result = 31 * result + Objects.hashCode(data);
+        return result;
     }
 }

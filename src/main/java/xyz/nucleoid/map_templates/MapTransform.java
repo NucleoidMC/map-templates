@@ -9,43 +9,11 @@ import net.minecraft.world.phys.Vec3;
 
 public interface MapTransform {
     static MapTransform translation(int x, int y, int z) {
-        return new MapTransform() {
-            @Override
-            public BlockPos.MutableBlockPos transformPoint(BlockPos.MutableBlockPos mutablePos) {
-                return mutablePos.move(x, y, z);
-            }
-
-            @Override
-            public Vec3 transformedPoint(Vec3 pos) {
-                return pos.add(x, y, z);
-            }
-        };
+        return new TranslationTransform(x, y, z);
     }
 
     static MapTransform rotationAround(BlockPos pivot, Rotation rotation, Mirror mirror) {
-        return new MapTransform() {
-            @Override
-            public BlockPos.MutableBlockPos transformPoint(BlockPos.MutableBlockPos mutablePos) {
-                var result = this.transformedPoint(mutablePos);
-                mutablePos.set(result);
-                return mutablePos;
-            }
-
-            @Override
-            public BlockPos transformedPoint(BlockPos pos) {
-                return StructureTemplate.transform(pos, mirror, rotation, pivot);
-            }
-
-            @Override
-            public Vec3 transformedPoint(Vec3 pos) {
-                return StructureTemplate.transform(pos, mirror, rotation, pivot);
-            }
-
-            @Override
-            public BlockState transformedBlock(BlockState state) {
-                return state.mirror(mirror).rotate(rotation);
-            }
-        };
+        return new RotationTransform(mirror, rotation, pivot);
     }
 
     BlockPos.MutableBlockPos transformPoint(BlockPos.MutableBlockPos mutablePos);
@@ -67,5 +35,41 @@ public interface MapTransform {
 
     default BlockState transformedBlock(BlockState state) {
         return state;
+    }
+
+    record TranslationTransform(int x, int y, int z) implements MapTransform {
+        @Override
+        public BlockPos.MutableBlockPos transformPoint(BlockPos.MutableBlockPos mutablePos) {
+            return mutablePos.move(x, y, z);
+        }
+
+        @Override
+        public Vec3 transformedPoint(Vec3 pos) {
+            return pos.add(x, y, z);
+        }
+    }
+
+    record RotationTransform(Mirror mirror, Rotation rotation, BlockPos pivot) implements MapTransform {
+        @Override
+        public BlockPos.MutableBlockPos transformPoint(BlockPos.MutableBlockPos mutablePos) {
+            var result = this.transformedPoint(mutablePos);
+            mutablePos.set(result);
+            return mutablePos;
+        }
+
+        @Override
+        public BlockPos transformedPoint(BlockPos pos) {
+            return StructureTemplate.transform(pos, mirror, rotation, pivot);
+        }
+
+        @Override
+        public Vec3 transformedPoint(Vec3 pos) {
+            return StructureTemplate.transform(pos, mirror, rotation, pivot);
+        }
+
+        @Override
+        public BlockState transformedBlock(BlockState state) {
+            return state.mirror(mirror).rotate(rotation);
+        }
     }
 }

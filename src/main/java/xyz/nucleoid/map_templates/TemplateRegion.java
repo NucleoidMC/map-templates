@@ -2,6 +2,8 @@ package xyz.nucleoid.map_templates;
 
 import net.minecraft.nbt.CompoundTag;
 
+import java.util.Objects;
+
 public final class TemplateRegion {
     private final String marker;
     private final BlockBounds bounds;
@@ -54,5 +56,20 @@ public final class TemplateRegion {
 
     public TemplateRegion copy() {
         return new TemplateRegion(this.marker, this.bounds, this.data != null ? this.data.copy() : null);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof TemplateRegion that)) return false;
+
+        return marker.equals(that.marker) && bounds.equals(that.bounds) && Objects.equals(data, that.data);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = marker.hashCode();
+        result = 31 * result + bounds.hashCode();
+        result = 31 * result + Objects.hashCode(data);
+        return result;
     }
 }
