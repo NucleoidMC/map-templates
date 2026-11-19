@@ -126,7 +126,7 @@ public record BlockBounds(BlockPos min, BlockPos max) implements Iterable<BlockP
     }
 
     public BlockPos size() {
-        return this.max.subtract(this.min);
+        return this.max.subtract(this.min).offset(1, 1, 1);
     }
 
     public Vec3 center() {
