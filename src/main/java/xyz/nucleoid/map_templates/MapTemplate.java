@@ -351,6 +351,12 @@ public final class MapTemplate {
             ));
         }
 
+
+        var selfBounds = getBoundsOrNull();
+        if (selfBounds != null) {
+            result.setBounds(transform.transformedBounds(selfBounds));
+        }
+
         return result;
     }
 
